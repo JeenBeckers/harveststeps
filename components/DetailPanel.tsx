@@ -5,7 +5,7 @@ import { initials, statusClassName, stopStatus } from "@/lib/logic";
 import type { Harvester, Stop } from "@/lib/types";
 
 export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: Stop }) {
-  const { state, actions } = useApp();
+  const { state, actions, canEdit } = useApp();
   const status = stopStatus(stop);
   const idx = harvester.stops.indexOf(stop);
   const doneCount = stop.tasks.filter((t) => t.done).length;
@@ -20,12 +20,14 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
         <h2 style={{ fontSize: "27px", marginBottom: "10px" }}>{stop.name}</h2>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <span className={statusClassName(status)}>{status}</span>
-          <button
-            className="hv-btn hv-btn--ghost hv-btn--sm"
-            onClick={() => actions.openEditStop(stop.id)}
-          >
-            Halte bewerken
-          </button>
+          {canEdit && (
+            <button
+              className="hv-btn hv-btn--ghost hv-btn--sm"
+              onClick={() => actions.openEditStop(stop.id)}
+            >
+              Halte bewerken
+            </button>
+          )}
         </div>
 
         <hr className="hv-divider" style={{ margin: "22px 0" }} />
@@ -79,7 +81,12 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBottom: "24px" }}>
           {stop.tasks.map((t) => (
-            <button key={t.id} className="hv-task-row" onClick={() => actions.toggleTask(harvester.id, stop.id, t.id)}>
+            <button
+              key={t.id}
+              className="hv-task-row"
+              style={canEdit ? undefined : { cursor: "default" }}
+              onClick={canEdit ? () => actions.toggleTask(harvester.id, stop.id, t.id) : undefined}
+            >
               <span className={`hv-checkbox${t.done ? " is-checked" : ""}`}>{t.done ? "✓" : ""}</span>
               <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                 <span

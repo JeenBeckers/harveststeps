@@ -1256,3 +1256,62 @@ textarea {
   margin-bottom: 24px;
   cursor: pointer;
 }
+
+/* ---------- Login ---------- */
+.hv-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hv-cream-50);
+  padding: 24px;
+}
+.hv-login-card {
+  width: 380px;
+  max-width: 100%;
+  background: var(--hv-bg-elevated);
+  border: 1px solid var(--hv-border);
+  border-radius: var(--hv-r-lg);
+  box-shadow: var(--hv-shadow-lg);
+  padding: 32px 34px;
+}
+.hv-login-brand {
+  margin-bottom: 18px;
+}
+.hv-login-logo {
+  height: 24px;
+  width: auto;
+}
+
+/* ---------- Header user menu ---------- */
+.hv-header__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hv-role-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 251, 245, 0.16);
+  color: var(--hv-cream-50);
+  white-space: nowrap;
+}
+.hv-logout-btn {
+  border: 0;
+  background: transparent;
+  color: var(--hv-cream-300);
+  font-family: var(--hv-font-sans);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.hv-logout-btn:hover {
+  color: var(--hv-cream-50);
+}

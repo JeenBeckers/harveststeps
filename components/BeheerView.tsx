@@ -4,7 +4,7 @@ import { useApp } from "@/lib/store";
 import { ESM_LEAD } from "@/lib/constants";
 
 export function BeheerView() {
-  const { state, actions } = useApp();
+  const { state, actions, canEdit } = useApp();
   const sysMap = new Map(state.systems.map((s) => [s.key, s]));
 
   return (
@@ -17,9 +17,11 @@ export function BeheerView() {
           <h1 className="hv-display" style={{ fontSize: "36px" }}>
             Standaardroute
           </h1>
-          <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddTemplateStop}>
-            + Halte toevoegen aan route
-          </button>
+          {canEdit && (
+            <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddTemplateStop}>
+              + Halte toevoegen aan route
+            </button>
+          )}
         </div>
         <p style={{ color: "var(--hv-fg-muted)", maxWidth: "560px", marginBottom: "30px" }}>
           Deze route wordt automatisch toegepast op elke nieuwe harvester. Wijzigingen gelden voor nieuwe reizen; lopende reizen
@@ -50,12 +52,21 @@ export function BeheerView() {
                   );
                 })}
               </span>
-              <button className="hv-btn hv-btn--ghost hv-btn--sm" onClick={() => actions.openEditTemplate(t.id)}>
-                Bewerken
-              </button>
-              <button className="hv-icon-btn" onClick={() => actions.removeTemplateStop(t.id)}>
-                ×
-              </button>
+              {canEdit ? (
+                <>
+                  <button className="hv-btn hv-btn--ghost hv-btn--sm" onClick={() => actions.openEditTemplate(t.id)}>
+                    Bewerken
+                  </button>
+                  <button className="hv-icon-btn" onClick={() => actions.removeTemplateStop(t.id)}>
+                    ×
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span />
+                  <span />
+                </>
+              )}
             </div>
           ))}
         </div>

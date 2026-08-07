@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useApp } from "@/lib/store";
+import { initials } from "@/lib/logic";
 import type { View } from "@/lib/types";
 
-const NAV_ITEMS: [View, string][] = [
+const BASE_NAV_ITEMS: [View, string][] = [
   ["reis", "Reis"],
   ["dashboard", "Dashboard"],
   ["beheer", "Route"],
@@ -12,8 +13,9 @@ const NAV_ITEMS: [View, string][] = [
 ];
 
 export function Header() {
-  const { state, actions } = useApp();
+  const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => x.stops.length).length;
+  const navItems: [View, string][] = canEdit ? [...BASE_NAV_ITEMS, ["gebruikers", "Gebruikers"]] : BASE_NAV_ITEMS;
 
   return (
     <header className="hv-header">
@@ -22,7 +24,7 @@ export function Header() {
         <span className="hv-eyebrow hv-header__section">Talentplanner · Post-master</span>
       </div>
       <nav className="hv-header__nav">
-        {NAV_ITEMS.map(([key, label]) => (
+        {navItems.map(([key, label]) => (
           <button
             key={key}
             className={`hv-btn--pill-toggle${state.view === key ? " is-active" : ""}`}
@@ -34,7 +36,15 @@ export function Header() {
       </nav>
       <div className="hv-header__meta">
         <span className="hv-eyebrow hv-header__metatext">{activeJourneys} actieve reizen</span>
-        <div className="hv-header__avatar">JV</div>
+        <div className="hv-header__user">
+          <span className="hv-role-chip">{canEdit ? "Bewerker" : "Bekijker"}</span>
+          <div className="hv-header__avatar" title={me?.email}>
+            {me ? initials(me.email.split("@")[0].replace(/[._]/g, " ")) : ""}
+          </div>
+          <button className="hv-logout-btn" onClick={actions.logout}>
+            Uitloggen
+          </button>
+        </div>
       </div>
     </header>
   );

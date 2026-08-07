@@ -18,7 +18,7 @@ function SkeletonBlock() {
 }
 
 export function ReisView() {
-  const { state, actions } = useApp();
+  const { state, actions, canEdit } = useApp();
   const h = state.data.find((x) => x.id === state.hid) || state.data[0];
   if (!h) return null;
 
@@ -42,12 +42,16 @@ export function ReisView() {
             <div className="hv-empty__icon">▽</div>
             <h2 style={{ fontSize: "26px", marginBottom: "8px" }}>Nog geen reis gestart</h2>
             <p style={{ color: "var(--hv-fg-muted)", marginBottom: "20px" }}>
-              {h.name} is aangenomen maar heeft nog geen reis. Start de standaardroute om alle {state.template.length} haltes klaar te
-              zetten.
+              {h.name} is aangenomen maar heeft nog geen reis.
+              {canEdit
+                ? ` Start de standaardroute om alle ${state.template.length} haltes klaar te zetten.`
+                : " Een bewerker kan de standaardroute starten."}
             </p>
-            <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.startJourney}>
-              Reis starten vanaf standaardroute
-            </button>
+            {canEdit && (
+              <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.startJourney}>
+                Reis starten vanaf standaardroute
+              </button>
+            )}
           </div>
         ) : (
           <div className="hv-fade-in">
@@ -64,9 +68,11 @@ export function ReisView() {
                   {h.role} · {h.client} · in dienst sinds {h.start}
                 </p>
               </div>
-              <button className="hv-btn hv-btn--ghost" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddStop}>
-                + Halte toevoegen
-              </button>
+              {canEdit && (
+                <button className="hv-btn hv-btn--ghost" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddStop}>
+                  + Halte toevoegen
+                </button>
+              )}
             </div>
 
             <div className="hv-progress-bar-wrap">

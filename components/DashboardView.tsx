@@ -8,7 +8,7 @@ import type { Harvester, Stop } from "@/lib/types";
 type Row = { h: Harvester; cur: Stop | null; tot: number; dn: number; status: string };
 
 export function DashboardView() {
-  const { state, actions } = useApp();
+  const { state, actions, canEdit } = useApp();
   const members = allMembers(state.depts);
 
   const withMeta: Row[] = state.data.map((h) => {
@@ -66,9 +66,11 @@ export function DashboardView() {
           <h1 className="hv-display" style={{ fontSize: "36px" }}>
             Alle reizen in beeld
           </h1>
-          <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddHarvester}>
-            + Harvester toevoegen
-          </button>
+          {canEdit && (
+            <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddHarvester}>
+              + Harvester toevoegen
+            </button>
+          )}
         </div>
 
         <div className="hv-kpi-grid">
@@ -185,7 +187,12 @@ export function DashboardView() {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
               {openTasks.map((t) => (
-                <button key={t.key} className="hv-task-row" onClick={t.onToggle}>
+                <button
+                  key={t.key}
+                  className="hv-task-row"
+                  style={canEdit ? undefined : { cursor: "default" }}
+                  onClick={canEdit ? t.onToggle : undefined}
+                >
                   <span className="hv-checkbox" />
                   <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                     <span style={{ fontSize: "12.5px", lineHeight: 1.4, color: "var(--hv-fg)" }}>{t.label}</span>

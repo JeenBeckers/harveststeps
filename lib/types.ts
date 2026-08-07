@@ -1,4 +1,12 @@
-export type View = "reis" | "dashboard" | "beheer" | "organisatie";
+export type View = "reis" | "dashboard" | "beheer" | "organisatie" | "gebruikers";
+
+export type Role = "viewer" | "editor";
+
+export type CurrentUser = {
+  id: number;
+  email: string;
+  role: Role;
+};
 
 export type SystemDef = {
   key: string;
@@ -96,6 +104,15 @@ export type HarvesterModalState = {
   start: string;
   recruiter: string;
   startNow: boolean;
+};
+
+export type PersistedAppState = {
+  data: Harvester[];
+  template: TemplateStop[];
+  depts: Department[];
+  systems: SystemDef[];
+  hid: string;
+  view: View;
 };
 
 export type AppState = {

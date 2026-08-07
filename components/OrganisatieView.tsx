@@ -3,7 +3,7 @@
 import { useApp } from "@/lib/store";
 
 export function OrganisatieView() {
-  const { state, actions, deptDrafts } = useApp();
+  const { state, actions, deptDrafts, canEdit } = useApp();
 
   return (
     <section className="hv-dash">
@@ -29,52 +29,60 @@ export function OrganisatieView() {
                 <div key={d.id} className="hv-dept-card">
                   <div className="hv-dept-card__head">
                     <span className="hv-dept-card__title">{d.name}</span>
-                    <button className="hv-icon-btn" title="Afdeling verwijderen" onClick={() => actions.removeDept(d.id)}>
-                      ×
-                    </button>
+                    {canEdit && (
+                      <button className="hv-icon-btn" title="Afdeling verwijderen" onClick={() => actions.removeDept(d.id)}>
+                        ×
+                      </button>
+                    )}
                   </div>
                   <div className="hv-member-list">
                     {d.members.map((m) => (
                       <span key={m} className="hv-member-pill">
                         {m}
-                        <button className="hv-member-pill__remove" title="Medewerker verwijderen" onClick={() => actions.removeDeptMember(d.id, m)}>
-                          ×
-                        </button>
+                        {canEdit && (
+                          <button className="hv-member-pill__remove" title="Medewerker verwijderen" onClick={() => actions.removeDeptMember(d.id, m)}>
+                            ×
+                          </button>
+                        )}
                       </span>
                     ))}
                     {d.members.length === 0 && (
                       <span style={{ fontSize: "11.5px", color: "var(--hv-fg-subtle)", fontStyle: "italic" }}>Nog geen medewerkers</span>
                     )}
                   </div>
-                  <div className="hv-inline-form">
-                    <input
-                      className="hv-input"
-                      style={{ flex: 1, minWidth: 0 }}
-                      value={deptDrafts[d.id] || ""}
-                      onChange={(e) => actions.setDeptDraft(d.id, e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") actions.addDeptMember(d.id); }}
-                      placeholder="Naam medewerker"
-                    />
-                    <button className="hv-btn hv-btn--ghost hv-btn--sm" onClick={() => actions.addDeptMember(d.id)}>
-                      Toevoegen
-                    </button>
-                  </div>
+                  {canEdit && (
+                    <div className="hv-inline-form">
+                      <input
+                        className="hv-input"
+                        style={{ flex: 1, minWidth: 0 }}
+                        value={deptDrafts[d.id] || ""}
+                        onChange={(e) => actions.setDeptDraft(d.id, e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") actions.addDeptMember(d.id); }}
+                        placeholder="Naam medewerker"
+                      />
+                      <button className="hv-btn hv-btn--ghost hv-btn--sm" onClick={() => actions.addDeptMember(d.id)}>
+                        Toevoegen
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
-            <div className="hv-inline-form" style={{ marginTop: "14px" }}>
-              <input
-                className="hv-input"
-                style={{ flex: 1, minWidth: 0 }}
-                value={state.newDept}
-                onChange={(e) => actions.setNewDept(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") actions.addDept(); }}
-                placeholder="Naam nieuwe afdeling"
-              />
-              <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.addDept}>
-                Afdeling toevoegen
-              </button>
-            </div>
+            {canEdit && (
+              <div className="hv-inline-form" style={{ marginTop: "14px" }}>
+                <input
+                  className="hv-input"
+                  style={{ flex: 1, minWidth: 0 }}
+                  value={state.newDept}
+                  onChange={(e) => actions.setNewDept(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") actions.addDept(); }}
+                  placeholder="Naam nieuwe afdeling"
+                />
+                <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.addDept}>
+                  Afdeling toevoegen
+                </button>
+              </div>
+            )}
           </div>
 
           <div>
@@ -93,26 +101,30 @@ export function OrganisatieView() {
                     <span style={{ fontSize: "10px", color: "var(--hv-fg-subtle)", whiteSpace: "nowrap" }}>
                       {used ? (used === 1 ? "1 halte" : used + " haltes") : "niet gebruikt"}
                     </span>
-                    <button className="hv-icon-btn" title="Systeem verwijderen" onClick={() => actions.removeSys(sy.key)}>
-                      ×
-                    </button>
+                    {canEdit && (
+                      <button className="hv-icon-btn" title="Systeem verwijderen" onClick={() => actions.removeSys(sy.key)}>
+                        ×
+                      </button>
+                    )}
                   </div>
                 );
               })}
             </div>
-            <div className="hv-inline-form" style={{ marginTop: "14px" }}>
-              <input
-                className="hv-input"
-                style={{ flex: 1, minWidth: 0 }}
-                value={state.newSys}
-                onChange={(e) => actions.setNewSys(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") actions.addSys(); }}
-                placeholder="Naam nieuw systeem"
-              />
-              <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.addSys}>
-                Systeem toevoegen
-              </button>
-            </div>
+            {canEdit && (
+              <div className="hv-inline-form" style={{ marginTop: "14px" }}>
+                <input
+                  className="hv-input"
+                  style={{ flex: 1, minWidth: 0 }}
+                  value={state.newSys}
+                  onChange={(e) => actions.setNewSys(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") actions.addSys(); }}
+                  placeholder="Naam nieuw systeem"
+                />
+                <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.addSys}>
+                  Systeem toevoegen
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

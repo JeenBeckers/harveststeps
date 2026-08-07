@@ -4,7 +4,7 @@ import { useApp } from "@/lib/store";
 import { initials } from "@/lib/logic";
 
 export function HarvesterSidebar() {
-  const { state, actions } = useApp();
+  const { state, actions, canEdit } = useApp();
 
   return (
     <aside className="hv-hsidebar">
@@ -31,15 +31,17 @@ export function HarvesterSidebar() {
           );
         })}
       </div>
-      <div className="hv-hsidebar__foot">
-        <button
-          className="hv-btn hv-btn--ghost"
-          style={{ width: "100%", justifyContent: "center", fontSize: "12.5px", padding: "9px 12px", whiteSpace: "nowrap" }}
-          onClick={actions.openAddHarvester}
-        >
-          + Harvester toevoegen
-        </button>
-      </div>
+      {canEdit && (
+        <div className="hv-hsidebar__foot">
+          <button
+            className="hv-btn hv-btn--ghost"
+            style={{ width: "100%", justifyContent: "center", fontSize: "12.5px", padding: "9px 12px", whiteSpace: "nowrap" }}
+            onClick={actions.openAddHarvester}
+          >
+            + Harvester toevoegen
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
