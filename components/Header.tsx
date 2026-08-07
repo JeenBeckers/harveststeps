@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useApp } from "@/lib/store";
 import type { View } from "@/lib/types";
 
@@ -17,8 +18,7 @@ export function Header() {
   return (
     <header className="hv-header">
       <div className="hv-header__brand">
-        <span className="hv-header__logo">Harvest</span>
-        <span className="hv-header__emblem">▽</span>
+        <Image src="/harvest-logo.png" alt="Harvest" width={132} height={28} priority style={{ height: "22px", width: "auto" }} />
         <span className="hv-eyebrow hv-header__section">Talentplanner · Post-master</span>
       </div>
       <nav className="hv-header__nav">
