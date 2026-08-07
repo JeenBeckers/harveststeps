@@ -1,21 +1,11 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
-import { Cormorant_Garamond } from "next/font/google";
+import { Cormorant_Garamond, Libre_Franklin } from "next/font/google";
 import "./globals.css";
 
-const libreFranklin = localFont({
-  src: [
-    {
-      path: "./fonts/LibreFranklin-VariableFont_wght.ttf",
-      weight: "100 900",
-      style: "normal",
-    },
-    {
-      path: "./fonts/LibreFranklin-Italic-VariableFont_wght.ttf",
-      weight: "100 900",
-      style: "italic",
-    },
-  ],
+const libreFranklin = Libre_Franklin({
+  subsets: ["latin"],
+  weight: ["300", "400", "500"],
+  style: ["normal", "italic"],
   variable: "--font-libre-franklin",
   display: "swap",
 });
