@@ -1,0 +1,528 @@
+"use client";
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { DEFAULT_DEPTS, DEFAULT_SYSTEMS, ESM_LEAD, HARVESTERS, TEMPLATE } from "./constants";
+import { buildStops, deptGuide, makeStop, resolveOwner } from "./logic";
+import type {
+  AppState,
+  Department,
+  Harvester,
+  HarvesterModalState,
+  ModalTaskDraft,
+  StopModalMode,
+  StopModalState,
+  SystemDef,
+  TemplateStop,
+  View,
+} from "./types";
+
+const STORAGE_KEY = "harveststeps:v1";
+
+type PersistedShape = {
+  data: Harvester[];
+  template: TemplateStop[];
+  depts: Department[];
+  systems: SystemDef[];
+  hid: string;
+  view: View;
+};
+
+function seedState(): AppState {
+  return {
+    view: "reis",
+    loading: true,
+    hid: "iris",
+    sid: null,
+    fStatus: "Alle",
+    fOwner: "Alle",
+    newDept: "",
+    newSys: "",
+    systems: DEFAULT_SYSTEMS.map((x) => ({ ...x })),
+    depts: DEFAULT_DEPTS.map((d) => ({ id: d.id, name: d.name, members: d.members.slice() })),
+    template: TEMPLATE.map((t) => ({ ...t, involved: t.involved.slice(), sys: t.sys.slice(), tasks: t.tasks.map((k) => ({ ...k })) })),
+    data: HARVESTERS.map((h) => ({
+      id: h.id,
+      name: h.name,
+      age: String(h.age),
+      role: h.role,
+      client: h.client,
+      start: h.start,
+      recruiter: h.recruiter,
+      stops: h.reached < 0 ? [] : buildStops(h.reached, h.partial, h.recruiter, TEMPLATE, DEFAULT_DEPTS),
+    })),
+    modal: { open: false, mode: "harvester", editId: null, name: "", dept: "ESM", guide: ESM_LEAD, sys: ["slack"], tasks: [], taskDraft: "" },
+    hmodal: { open: false, name: "", age: "", role: "", client: "", start: "", recruiter: "Wessal Wafa", startNow: true },
+  };
+}
+
+function loadPersisted(): PersistedShape | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.data)) return null;
+    return parsed as PersistedShape;
+  } catch {
+    return null;
+  }
+}
+
+type Actions = {
+  setView: (v: View) => void;
+  pickHarvester: (id: string) => void;
+  openStop: (sid: string) => void;
+  toggleTask: (hid: string, sid: string, tid: string) => void;
+  startJourney: () => void;
+  openAddStop: () => void;
+  openAddTemplateStop: () => void;
+  openEditStop: (stopId: string) => void;
+  openEditTemplate: (templateId: string) => void;
+  closeModal: () => void;
+  setModalName: (v: string) => void;
+  pickModalDept: (dept: string) => void;
+  pickModalGuide: (guide: string) => void;
+  toggleModalSys: (key: string) => void;
+  setModalTaskDraft: (v: string) => void;
+  addModalTask: () => void;
+  patchModalTask: (i: number, patch: Partial<ModalTaskDraft>) => void;
+  removeModalTask: (i: number) => void;
+  submitModal: () => void;
+  openAddHarvester: () => void;
+  closeHModal: () => void;
+  setHName: (v: string) => void;
+  setHAge: (v: string) => void;
+  setHRole: (v: string) => void;
+  setHClient: (v: string) => void;
+  setHStart: (v: string) => void;
+  pickHRecruiter: (v: string) => void;
+  toggleHStartNow: () => void;
+  submitHModal: () => void;
+  setFStatus: (v: string) => void;
+  setFOwner: (v: string) => void;
+  resetFilters: () => void;
+  removeTemplateStop: (id: string) => void;
+  setNewDept: (v: string) => void;
+  addDept: () => void;
+  removeDept: (id: string) => void;
+  setDeptDraft: (id: string, v: string) => void;
+  addDeptMember: (id: string) => void;
+  removeDeptMember: (id: string, member: string) => void;
+  setNewSys: (v: string) => void;
+  addSys: () => void;
+  removeSys: (key: string) => void;
+};
+
+const AppContext = createContext<{ state: AppState; actions: Actions; deptDrafts: Record<string, string> } | null>(null);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<AppState>(seedState);
+  const [deptDrafts, setDeptDrafts] = useState<Record<string, string>>({});
+  const hydratedRef = useRef(false);
+
+  useEffect(() => {
+    const persisted = loadPersisted();
+    if (persisted) {
+      setState((s) => ({
+        ...s,
+        data: persisted.data,
+        template: persisted.template,
+        depts: persisted.depts,
+        systems: persisted.systems,
+        hid: persisted.hid,
+        view: persisted.view,
+      }));
+    }
+    const t = setTimeout(() => {
+      hydratedRef.current = true;
+      setState((s) => ({ ...s, loading: false }));
+    }, persisted ? 200 : 700);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const payload: PersistedShape = {
+      data: state.data,
+      template: state.template,
+      depts: state.depts,
+      systems: state.systems,
+      hid: state.hid,
+      view: state.view,
+    };
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore quota / privacy-mode errors
+    }
+  }, [state.data, state.template, state.depts, state.systems, state.hid, state.view]);
+
+  const setView = useCallback((v: View) => setState((s) => ({ ...s, view: v })), []);
+
+  const pickHarvester = useCallback((id: string) => {
+    setState((s) => ({ ...s, hid: id, sid: null, loading: true, view: "reis" }));
+    setTimeout(() => setState((s) => ({ ...s, loading: false })), 380);
+  }, []);
+
+  const openStop = useCallback((sid: string) => setState((s) => ({ ...s, sid })), []);
+
+  const toggleTask = useCallback((hid: string, sid: string, tid: string) => {
+    setState((s) => ({
+      ...s,
+      data: s.data.map((h) =>
+        h.id !== hid
+          ? h
+          : {
+              ...h,
+              stops: h.stops.map((st) =>
+                st.id !== sid
+                  ? st
+                  : { ...st, tasks: st.tasks.map((t) => (t.id !== tid ? t : { ...t, done: !t.done })) }
+              ),
+            }
+      ),
+    }));
+  }, []);
+
+  const startJourney = useCallback(() => {
+    setState((s) => {
+      const me = s.data.find((x) => x.id === s.hid);
+      if (!me) return s;
+      return {
+        ...s,
+        sid: null,
+        data: s.data.map((x) => (x.id !== s.hid ? x : { ...x, stops: buildStops(0, 0, me.recruiter, s.template, s.depts) })),
+      };
+    });
+  }, []);
+
+  const openAddStop = useCallback(() => {
+    setState((s) => {
+      const me = s.data.find((x) => x.id === s.hid);
+      const guide = deptGuide("ESM", me?.recruiter || "", s.depts);
+      return { ...s, modal: { open: true, mode: "harvester", editId: null, name: "", dept: "ESM", guide, sys: [], tasks: [], taskDraft: "" } };
+    });
+  }, []);
+
+  const openAddTemplateStop = useCallback(() => {
+    setState((s) => ({
+      ...s,
+      modal: { open: true, mode: "template", editId: null, name: "", dept: "ESM", guide: deptGuide("ESM", "Wessal Wafa", s.depts), sys: [], tasks: [], taskDraft: "" },
+    }));
+  }, []);
+
+  const openEditStop = useCallback((stopId: string) => {
+    setState((s) => {
+      const h = s.data.find((x) => x.id === s.hid);
+      const stop = h?.stops.find((x) => x.id === stopId);
+      if (!stop) return s;
+      return {
+        ...s,
+        modal: {
+          open: true,
+          mode: "stop",
+          editId: stop.id,
+          name: stop.name,
+          dept: stop.dept,
+          guide: stop.guide,
+          sys: stop.sys.slice(),
+          tasks: stop.tasks.map((t) => ({ id: t.id, label: t.label, owner: t.owner, done: t.done })),
+          taskDraft: "",
+        },
+      };
+    });
+  }, []);
+
+  const openEditTemplate = useCallback((templateId: string) => {
+    setState((s) => {
+      const t = s.template.find((x) => x.id === templateId);
+      if (!t) return s;
+      const guide = deptGuide(t.dept, "Wessal Wafa", s.depts);
+      return {
+        ...s,
+        modal: {
+          open: true,
+          mode: "edit",
+          editId: t.id,
+          name: t.name,
+          dept: t.dept,
+          guide,
+          sys: t.sys.slice(),
+          tasks: t.tasks.map((x) => ({ label: x.label, owner: resolveOwner(x.owner, ESM_LEAD, guide), done: false })),
+          taskDraft: "",
+        },
+      };
+    });
+  }, []);
+
+  const closeModal = useCallback(() => setState((s) => ({ ...s, modal: { ...s.modal, open: false } })), []);
+
+  const patchModal = useCallback((patch: Partial<StopModalState>) => setState((s) => ({ ...s, modal: { ...s.modal, ...patch } })), []);
+
+  const setModalName = useCallback((v: string) => patchModal({ name: v }), [patchModal]);
+  const setModalTaskDraft = useCallback((v: string) => patchModal({ taskDraft: v }), [patchModal]);
+
+  const pickModalDept = useCallback((dept: string) => {
+    setState((s) => {
+      const h = s.data.find((x) => x.id === s.hid);
+      return { ...s, modal: { ...s.modal, dept, guide: deptGuide(dept, h?.recruiter || "", s.depts) } };
+    });
+  }, []);
+
+  const pickModalGuide = useCallback((guide: string) => patchModal({ guide }), [patchModal]);
+
+  const toggleModalSys = useCallback((key: string) => {
+    setState((s) => ({
+      ...s,
+      modal: { ...s.modal, sys: s.modal.sys.indexOf(key) >= 0 ? s.modal.sys.filter((k) => k !== key) : s.modal.sys.concat([key]) },
+    }));
+  }, []);
+
+  const addModalTask = useCallback(() => {
+    setState((s) => {
+      if (!s.modal.taskDraft.trim()) return s;
+      return {
+        ...s,
+        modal: { ...s.modal, tasks: s.modal.tasks.concat([{ label: s.modal.taskDraft.trim(), owner: s.modal.guide, done: false }]), taskDraft: "" },
+      };
+    });
+  }, []);
+
+  const patchModalTask = useCallback((i: number, patch: Partial<ModalTaskDraft>) => {
+    setState((s) => ({ ...s, modal: { ...s.modal, tasks: s.modal.tasks.map((t, j) => (j !== i ? t : { ...t, ...patch })) } }));
+  }, []);
+
+  const removeModalTask = useCallback((i: number) => {
+    setState((s) => ({ ...s, modal: { ...s.modal, tasks: s.modal.tasks.filter((_, j) => j !== i) } }));
+  }, []);
+
+  const submitModal = useCallback(() => {
+    setState((s) => {
+      const m = s.modal;
+      const h = s.data.find((x) => x.id === s.hid);
+      const nm = (m.name || "").trim() || "Nieuwe halte";
+      const tasksIn = m.tasks.length ? m.tasks : [{ label: "Halte voorbereiden", owner: m.guide, done: false }];
+      const tasks = tasksIn.map((t) => ({ id: t.id, label: (t.label || "").trim() || "Actie", owner: t.owner, done: !!t.done }));
+
+      if (m.mode === "harvester" && h) {
+        const nid = "c" + Date.now();
+        const stop = makeStop(
+          { phase: "Individueel", name: nm, dept: m.dept, esm: true, guide: m.guide, involved: [m.dept, "Begeleider"], sys: m.sys, custom: true, tasks },
+          0,
+          h.recruiter,
+          nid,
+          s.depts
+        );
+        stop.id = nid;
+        stop.tasks.forEach((t, j) => { t.id = nid + "t" + j; });
+        return {
+          ...s,
+          sid: nid,
+          data: s.data.map((x) => (x.id !== s.hid ? x : { ...x, stops: x.stops.concat([stop]) })),
+          modal: { ...s.modal, open: false },
+        };
+      }
+      if (m.mode === "stop") {
+        return {
+          ...s,
+          data: s.data.map((x) =>
+            x.id !== s.hid
+              ? x
+              : {
+                  ...x,
+                  stops: x.stops.map((stp) =>
+                    stp.id !== m.editId
+                      ? stp
+                      : {
+                          ...stp,
+                          name: nm,
+                          dept: m.dept,
+                          guide: m.guide,
+                          sys: m.sys.slice(),
+                          tasks: tasks.map((t, j) => ({ id: t.id || m.editId + "n" + j + Date.now(), label: t.label, owner: t.owner, done: t.done })),
+                        }
+                  ),
+                }
+          ),
+          modal: { ...s.modal, open: false },
+        };
+      }
+      if (m.mode === "edit") {
+        return {
+          ...s,
+          template: s.template.map((x) =>
+            x.id !== m.editId ? x : { ...x, name: nm, dept: m.dept, sys: m.sys.slice(), tasks: tasks.map((t) => ({ label: t.label, owner: t.owner })) }
+          ),
+          modal: { ...s.modal, open: false },
+        };
+      }
+      // mode === "template"
+      return {
+        ...s,
+        template: s.template.concat([
+          { id: "tpl" + Date.now(), phase: "Programma", name: nm, dept: m.dept, esm: true, crit: false, note: "", involved: [m.dept], sys: m.sys.slice(), tasks: tasks.map((t) => ({ label: t.label, owner: t.owner })) },
+        ]),
+        modal: { ...s.modal, open: false },
+      };
+    });
+  }, []);
+
+  const openAddHarvester = useCallback(() => {
+    setState((s) => {
+      const recruitDept = s.depts.find((d) => d.name === "Recruitment");
+      const recruiters = recruitDept && recruitDept.members.length ? recruitDept.members : [];
+      return { ...s, hmodal: { open: true, name: "", age: "", role: "", client: "", start: "", recruiter: recruiters[0] || "Wessal Wafa", startNow: true } };
+    });
+  }, []);
+
+  const closeHModal = useCallback(() => setState((s) => ({ ...s, hmodal: { ...s.hmodal, open: false } })), []);
+
+  const patchHModal = useCallback((patch: Partial<HarvesterModalState>) => setState((s) => ({ ...s, hmodal: { ...s.hmodal, ...patch } })), []);
+
+  const setHName = useCallback((v: string) => patchHModal({ name: v }), [patchHModal]);
+  const setHAge = useCallback((v: string) => patchHModal({ age: v }), [patchHModal]);
+  const setHRole = useCallback((v: string) => patchHModal({ role: v }), [patchHModal]);
+  const setHClient = useCallback((v: string) => patchHModal({ client: v }), [patchHModal]);
+  const setHStart = useCallback((v: string) => patchHModal({ start: v }), [patchHModal]);
+  const pickHRecruiter = useCallback((v: string) => patchHModal({ recruiter: v }), [patchHModal]);
+  const toggleHStartNow = useCallback(() => setState((s) => ({ ...s, hmodal: { ...s.hmodal, startNow: !s.hmodal.startNow } })), []);
+
+  const submitHModal = useCallback(() => {
+    setState((s) => {
+      const hm = s.hmodal;
+      const nm = (hm.name || "").trim();
+      if (!nm) return s;
+      const id = "h" + Date.now();
+      const recruitDept = s.depts.find((d) => d.name === "Recruitment");
+      const recruiters = recruitDept && recruitDept.members.length ? recruitDept.members : [];
+      const rec = hm.recruiter || recruiters[0] || "Wessal Wafa";
+      const newHarvester: Harvester = {
+        id,
+        name: nm,
+        age: (hm.age || "").trim() || "—",
+        role: (hm.role || "").trim() || "Young professional",
+        client: (hm.client || "").trim() || "Nog te matchen",
+        start: (hm.start || "").trim() || "—",
+        recruiter: rec,
+        stops: hm.startNow ? buildStops(0, 0, rec, s.template, s.depts) : [],
+      };
+      return { ...s, data: s.data.concat([newHarvester]), hid: id, sid: null, view: "reis", hmodal: { ...s.hmodal, open: false } };
+    });
+  }, []);
+
+  const setFStatus = useCallback((v: string) => setState((s) => ({ ...s, fStatus: v })), []);
+  const setFOwner = useCallback((v: string) => setState((s) => ({ ...s, fOwner: v })), []);
+  const resetFilters = useCallback(() => setState((s) => ({ ...s, fStatus: "Alle", fOwner: "Alle" })), []);
+
+  const removeTemplateStop = useCallback((id: string) => setState((s) => ({ ...s, template: s.template.filter((x) => x.id !== id) })), []);
+
+  const setNewDept = useCallback((v: string) => setState((s) => ({ ...s, newDept: v })), []);
+  const addDept = useCallback(() => {
+    setState((s) => {
+      const n = (s.newDept || "").trim();
+      if (!n || s.depts.some((d) => d.name.toLowerCase() === n.toLowerCase())) return s;
+      return { ...s, depts: s.depts.concat([{ id: "d" + Date.now(), name: n, members: [] }]), newDept: "" };
+    });
+  }, []);
+  const removeDept = useCallback((id: string) => setState((s) => ({ ...s, depts: s.depts.filter((x) => x.id !== id) })), []);
+
+  const setDeptDraft = useCallback((id: string, v: string) => setDeptDrafts((d) => ({ ...d, [id]: v })), []);
+  const addDeptMember = useCallback((id: string) => {
+    setDeptDrafts((drafts) => {
+      const n = (drafts[id] || "").trim();
+      if (!n) return drafts;
+      setState((s) => ({
+        ...s,
+        depts: s.depts.map((x) => (x.id !== id ? x : { ...x, members: x.members.indexOf(n) >= 0 ? x.members : x.members.concat([n]) })),
+      }));
+      return { ...drafts, [id]: "" };
+    });
+  }, []);
+  const removeDeptMember = useCallback((id: string, member: string) => {
+    setState((s) => ({ ...s, depts: s.depts.map((x) => (x.id !== id ? x : { ...x, members: x.members.filter((y) => y !== member) })) }));
+  }, []);
+
+  const setNewSys = useCallback((v: string) => setState((s) => ({ ...s, newSys: v })), []);
+  const addSys = useCallback(() => {
+    setState((s) => {
+      const n = (s.newSys || "").trim();
+      if (!n) return s;
+      const key = n.toLowerCase().replace(/[^a-z0-9]/g, "") || "sys" + Date.now();
+      if (s.systems.some((x) => x.key === key)) return s;
+      return { ...s, systems: s.systems.concat([{ key, name: n, mono: n.slice(0, 1).toUpperCase() }]), newSys: "" };
+    });
+  }, []);
+  const removeSys = useCallback((key: string) => {
+    setState((s) => ({
+      ...s,
+      systems: s.systems.filter((y) => y.key !== key),
+      template: s.template.map((t) => ({ ...t, sys: t.sys.filter((k) => k !== key) })),
+      data: s.data.map((hh) => ({ ...hh, stops: hh.stops.map((stp) => ({ ...stp, sys: stp.sys.filter((k) => k !== key) })) })),
+    }));
+  }, []);
+
+  const actions: Actions = useMemo(
+    () => ({
+      setView,
+      pickHarvester,
+      openStop,
+      toggleTask,
+      startJourney,
+      openAddStop,
+      openAddTemplateStop,
+      openEditStop,
+      openEditTemplate,
+      closeModal,
+      setModalName,
+      pickModalDept,
+      pickModalGuide,
+      toggleModalSys,
+      setModalTaskDraft,
+      addModalTask,
+      patchModalTask,
+      removeModalTask,
+      submitModal,
+      openAddHarvester,
+      closeHModal,
+      setHName,
+      setHAge,
+      setHRole,
+      setHClient,
+      setHStart,
+      pickHRecruiter,
+      toggleHStartNow,
+      submitHModal,
+      setFStatus,
+      setFOwner,
+      resetFilters,
+      removeTemplateStop,
+      setNewDept,
+      addDept,
+      removeDept,
+      setDeptDraft,
+      addDeptMember,
+      removeDeptMember,
+      setNewSys,
+      addSys,
+      removeSys,
+    }),
+    [
+      setView, pickHarvester, openStop, toggleTask, startJourney, openAddStop, openAddTemplateStop,
+      openEditStop, openEditTemplate, closeModal, setModalName, pickModalDept, pickModalGuide,
+      toggleModalSys, setModalTaskDraft, addModalTask, patchModalTask, removeModalTask, submitModal,
+      openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, pickHRecruiter,
+      toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, setNewDept,
+      addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
+    ]
+  );
+
+  const value = useMemo(() => ({ state, actions, deptDrafts }), [state, actions, deptDrafts]);
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+export function useApp() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("useApp must be used within AppProvider");
+  return ctx;
+}
