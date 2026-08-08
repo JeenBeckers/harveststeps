@@ -32,7 +32,7 @@ export function seedState(): AppState {
     fOwner: "Alle",
     newDept: "",
     newSys: "",
-    modal: { open: false, mode: "harvester", editId: null, name: "", dept: "ESM", guide: ESM_LEAD, sys: ["slack"], tasks: [], taskDraft: "" },
+    modal: { open: false, mode: "harvester", editId: null, name: "", dept: "ESM", guide: ESM_LEAD, sys: ["slack"], tasks: [], taskDraft: "", position: 1 },
     hmodal: { open: false, name: "", age: "", role: "", client: "", start: "", recruiter: "Wessal Wafa", startNow: true },
   };
 }

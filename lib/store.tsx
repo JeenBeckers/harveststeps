@@ -31,6 +31,7 @@ type Actions = {
   pickModalGuide: (guide: string) => void;
   toggleModalSys: (key: string) => void;
   setModalTaskDraft: (v: string) => void;
+  setModalPosition: (v: number) => void;
   addModalTask: () => void;
   patchModalTask: (i: number, patch: Partial<ModalTaskDraft>) => void;
   removeModalTask: (i: number) => void;
@@ -183,7 +184,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => {
       const me2 = s.data.find((x) => x.id === s.hid);
       const guide = deptGuide("ESM", me2?.recruiter || "", s.depts);
-      return { ...s, modal: { open: true, mode: "harvester", editId: null, name: "", dept: "ESM", guide, sys: [], tasks: [], taskDraft: "" } };
+      return { ...s, modal: { open: true, mode: "harvester", editId: null, name: "", dept: "ESM", guide, sys: [], tasks: [], taskDraft: "", position: (me2?.stops.length || 0) + 1 } };
     });
   }, []);
 
@@ -191,7 +192,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!canEditRef.current) return;
     setState((s) => ({
       ...s,
-      modal: { open: true, mode: "template", editId: null, name: "", dept: "ESM", guide: deptGuide("ESM", "Wessal Wafa", s.depts), sys: [], tasks: [], taskDraft: "" },
+      modal: { open: true, mode: "template", editId: null, name: "", dept: "ESM", guide: deptGuide("ESM", "Wessal Wafa", s.depts), sys: [], tasks: [], taskDraft: "", position: s.template.length + 1 },
     }));
   }, []);
 
@@ -213,6 +214,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           sys: stop.sys.slice(),
           tasks: stop.tasks.map((t) => ({ id: t.id, label: t.label, owner: t.owner, done: t.done })),
           taskDraft: "",
+          position: (h?.stops.indexOf(stop) ?? 0) + 1,
         },
       };
     });
@@ -236,6 +238,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           sys: t.sys.slice(),
           tasks: t.tasks.map((x) => ({ label: x.label, owner: resolveOwner(x.owner, ESM_LEAD, guide), done: false })),
           taskDraft: "",
+          position: s.template.indexOf(t) + 1,
         },
       };
     });
@@ -247,6 +250,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const setModalName = useCallback((v: string) => patchModal({ name: v }), [patchModal]);
   const setModalTaskDraft = useCallback((v: string) => patchModal({ taskDraft: v }), [patchModal]);
+  const setModalPosition = useCallback((v: number) => patchModal({ position: v }), [patchModal]);
 
   const pickModalDept = useCallback((dept: string) => {
     setState((s) => {
@@ -302,10 +306,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
         stop.id = nid;
         stop.tasks.forEach((t, j) => { t.id = nid + "t" + j; });
+        const insertAt = Math.min(Math.max(0, (m.position || 1) - 1), h.stops.length);
         return {
           ...s,
           sid: nid,
-          data: s.data.map((x) => (x.id !== s.hid ? x : { ...x, stops: x.stops.concat([stop]) })),
+          data: s.data.map((x) => {
+            if (x.id !== s.hid) return x;
+            const nextStops = x.stops.slice();
+            nextStops.splice(insertAt, 0, stop);
+            return { ...x, stops: nextStops };
+          }),
           modal: { ...s.modal, open: false },
         };
       }
@@ -344,13 +354,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
       }
       // mode === "template"
-      return {
-        ...s,
-        template: s.template.concat([
-          { id: "tpl" + Date.now(), phase: "Programma", name: nm, dept: m.dept, esm: true, crit: false, note: "", involved: [m.dept], sys: m.sys.slice(), tasks: tasks.map((t) => ({ label: t.label, owner: t.owner })) },
-        ]),
-        modal: { ...s.modal, open: false },
-      };
+      {
+        const nextTemplate = s.template.slice();
+        const insertAt = Math.min(Math.max(0, (m.position || 1) - 1), nextTemplate.length);
+        nextTemplate.splice(insertAt, 0, {
+          id: "tpl" + Date.now(),
+          phase: "Programma",
+          name: nm,
+          dept: m.dept,
+          esm: true,
+          crit: false,
+          note: "",
+          involved: [m.dept],
+          sys: m.sys.slice(),
+          tasks: tasks.map((t) => ({ label: t.label, owner: t.owner })),
+        });
+        return { ...s, template: nextTemplate, modal: { ...s.modal, open: false } };
+      }
     });
   }, []);
 
@@ -491,6 +511,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       pickModalGuide,
       toggleModalSys,
       setModalTaskDraft,
+      setModalPosition,
       addModalTask,
       patchModalTask,
       removeModalTask,
@@ -524,7 +545,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [
       setView, pickHarvester, openStop, toggleTask, startJourney, openAddStop, openAddTemplateStop,
       openEditStop, openEditTemplate, closeModal, setModalName, pickModalDept, pickModalGuide,
-      toggleModalSys, setModalTaskDraft, addModalTask, patchModalTask, removeModalTask, submitModal,
+      toggleModalSys, setModalTaskDraft, setModalPosition, addModalTask, patchModalTask, removeModalTask, submitModal,
       openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, pickHRecruiter,
       toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys, logout,

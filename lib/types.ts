@@ -93,6 +93,7 @@ export type StopModalState = {
   sys: string[];
   tasks: ModalTaskDraft[];
   taskDraft: string;
+  position: number;
 };
 
 export type HarvesterModalState = {

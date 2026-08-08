@@ -20,6 +20,9 @@ export function StopModal() {
   const eyebrow = m.mode === "harvester" ? "Individuele halte · " + (h?.name || "") : m.mode === "stop" ? "Reis van " + (h?.name || "") : TITLES[m.mode]?.[0];
   const [, title, cta] = TITLES[m.mode] || TITLES.harvester;
   const owners = allMembers(state.depts).concat(EXTRA_OWNERS);
+  const isNewStop = m.mode === "harvester" || m.mode === "template";
+  const totalCount = m.mode === "harvester" ? (h?.stops.length || 0) : m.mode === "template" ? state.template.length : 0;
+  const maxPosition = totalCount + 1;
 
   return (
     <div className="hv-modal-overlay" onClick={actions.closeModal}>
@@ -39,6 +42,29 @@ export function StopModal() {
             onChange={(e) => actions.setModalName(e.target.value)}
             placeholder="bv. Extra coachgesprek"
           />
+
+          {isNewStop && (
+            <>
+              <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>
+                Positie in de route
+              </p>
+              <div className="hv-inline-form hv-field" style={{ alignItems: "center" }}>
+                <input
+                  className="hv-input"
+                  style={{ width: "80px", flex: "none" }}
+                  type="number"
+                  min={1}
+                  max={maxPosition}
+                  value={m.position}
+                  onChange={(e) => {
+                    const v = Math.min(Math.max(1, Number(e.target.value) || 1), maxPosition);
+                    actions.setModalPosition(v);
+                  }}
+                />
+                <span style={{ fontSize: "12px", color: "var(--hv-fg-muted)" }}>van {maxPosition} haltes</span>
+              </div>
+            </>
+          )}
 
           <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>
             Verantwoordelijke afdeling
