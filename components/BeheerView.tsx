@@ -1,11 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/lib/store";
 import { ESM_LEAD } from "@/lib/constants";
 
 export function BeheerView() {
   const { state, actions, canEdit } = useApp();
   const sysMap = new Map(state.systems.map((s) => [s.key, s]));
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   return (
     <section className="hv-dash">
@@ -30,7 +33,40 @@ export function BeheerView() {
 
         <div className="hv-tpl-rows">
           {state.template.map((t, i) => (
-            <div key={t.id} className="hv-tpl-row">
+            <div
+              key={t.id}
+              className={
+                "hv-tpl-row" +
+                (canEdit ? " is-draggable" : "") +
+                (draggingId === t.id ? " is-dragging" : "") +
+                (overId === t.id && draggingId && draggingId !== t.id ? " is-drop-target" : "")
+              }
+              draggable={canEdit}
+              onDragStart={(e) => {
+                setDraggingId(t.id);
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", t.id);
+              }}
+              onDragOver={(e) => {
+                if (!canEdit) return;
+                e.preventDefault();
+                if (overId !== t.id) setOverId(t.id);
+              }}
+              onDragLeave={() => {
+                if (overId === t.id) setOverId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const fromId = e.dataTransfer.getData("text/plain") || draggingId;
+                if (fromId && fromId !== t.id) actions.reorderTemplate(fromId, t.id);
+                setDraggingId(null);
+                setOverId(null);
+              }}
+              onDragEnd={() => {
+                setDraggingId(null);
+                setOverId(null);
+              }}
+            >
               <span className="hv-tpl-row__num">{String(i + 1).padStart(2, "0")}</span>
               <span className="hv-tpl-row__namecol">
                 <span style={{ fontSize: "14px" }}>{t.name}</span>

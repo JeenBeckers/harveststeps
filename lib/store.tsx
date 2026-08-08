@@ -49,6 +49,7 @@ type Actions = {
   setFOwner: (v: string) => void;
   resetFilters: () => void;
   removeTemplateStop: (id: string) => void;
+  reorderTemplate: (fromId: string, toId: string) => void;
   setNewDept: (v: string) => void;
   addDept: () => void;
   removeDept: (id: string) => void;
@@ -407,6 +408,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, template: s.template.filter((x) => x.id !== id) }));
   }, []);
 
+  const reorderTemplate = useCallback((fromId: string, toId: string) => {
+    if (!canEditRef.current || fromId === toId) return;
+    setState((s) => {
+      const fromIdx = s.template.findIndex((x) => x.id === fromId);
+      const toIdx = s.template.findIndex((x) => x.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return s;
+      const next = s.template.slice();
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return { ...s, template: next };
+    });
+  }, []);
+
   const setNewDept = useCallback((v: string) => setState((s) => ({ ...s, newDept: v })), []);
   const addDept = useCallback(() => {
     if (!canEditRef.current) return;
@@ -495,6 +509,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setFOwner,
       resetFilters,
       removeTemplateStop,
+      reorderTemplate,
       setNewDept,
       addDept,
       removeDept,
@@ -511,7 +526,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       openEditStop, openEditTemplate, closeModal, setModalName, pickModalDept, pickModalGuide,
       toggleModalSys, setModalTaskDraft, addModalTask, patchModalTask, removeModalTask, submitModal,
       openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, pickHRecruiter,
-      toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, setNewDept,
+      toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys, logout,
     ]
   );

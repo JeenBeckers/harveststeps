@@ -1089,6 +1089,17 @@ textarea {
 .hv-tpl-row:hover {
   background: var(--hv-cream-100);
 }
+.hv-tpl-row.is-draggable {
+  cursor: grab;
+}
+.hv-tpl-row.is-dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+.hv-tpl-row.is-drop-target {
+  border-color: var(--hv-green-900);
+  background: var(--hv-cream-100);
+}
 .hv-tpl-row__num {
   font-family: var(--hv-font-serif);
   font-size: 20px;
