@@ -163,7 +163,8 @@ export async function getAppState(): Promise<PersistedAppState> {
   const sql = getSql();
   const rows = await sql`SELECT data FROM app_state WHERE id = 1`;
   if (rows.length === 0) return seedPersistedState();
-  return rows[0].data as PersistedAppState;
+  const data = rows[0].data as Partial<PersistedAppState>;
+  return { ...data, bookmarks: data.bookmarks ?? [] } as PersistedAppState;
 }
 
 export async function saveAppState(data: PersistedAppState): Promise<void> {

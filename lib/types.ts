@@ -1,4 +1,4 @@
-export type View = "reis" | "dashboard" | "beheer" | "organisatie" | "gebruikers";
+export type View = "reis" | "dashboard" | "beheer" | "organisatie" | "gebruikers" | "bookmarks";
 
 export type Role = "viewer" | "editor" | "admin";
 
@@ -18,6 +18,12 @@ export type Department = {
   id: string;
   name: string;
   members: string[];
+};
+
+export type Bookmark = {
+  id: string;
+  name: string;
+  url: string;
 };
 
 export type TaskDef = {
@@ -115,6 +121,7 @@ export type PersistedAppState = {
   template: TemplateStop[];
   depts: Department[];
   systems: SystemDef[];
+  bookmarks: Bookmark[];
   hid: string;
   view: View;
 };
@@ -128,10 +135,13 @@ export type AppState = {
   fOwner: string;
   newDept: string;
   newSys: string;
+  newBookmarkName: string;
+  newBookmarkUrl: string;
   systems: SystemDef[];
   depts: Department[];
   template: TemplateStop[];
   data: Harvester[];
+  bookmarks: Bookmark[];
   modal: StopModalState;
   hmodal: HarvesterModalState;
 };

@@ -8,6 +8,7 @@ export function seedPersistedState(): PersistedAppState {
     view: "reis",
     systems: DEFAULT_SYSTEMS.map((x) => ({ ...x })),
     depts: DEFAULT_DEPTS.map((d) => ({ id: d.id, name: d.name, members: d.members.slice() })),
+    bookmarks: [],
     template: TEMPLATE.map((t) => ({ ...t, involved: t.involved.slice(), sys: t.sys.slice(), tasks: t.tasks.map((k) => ({ ...k })) })),
     data: HARVESTERS.map((h) => ({
       id: h.id,
@@ -33,6 +34,8 @@ export function seedState(): AppState {
     fOwner: "Alle",
     newDept: "",
     newSys: "",
+    newBookmarkName: "",
+    newBookmarkUrl: "",
     modal: { open: false, mode: "harvester", editId: null, name: "", dept: "ESM", guide: ESM_LEAD, sys: ["slack"], tasks: [], taskDraft: "", position: 1 },
     hmodal: { open: false, name: "", age: "", role: "", client: "", start: "", recruiter: "Wessal Wafa", startNow: true },
   };

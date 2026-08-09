@@ -6,8 +6,9 @@ import { initials } from "@/lib/logic";
 import type { View } from "@/lib/types";
 
 const BASE_NAV_ITEMS: [View, string][] = [
-  ["reis", "Reis"],
-  ["dashboard", "Dashboard"],
+  ["dashboard", "Takenlijst"],
+  ["bookmarks", "Bookmarks"],
+  ["reis", "Reizen"],
   ["beheer", "Route"],
   ["organisatie", "Organisatie"],
 ];

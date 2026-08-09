@@ -60,6 +60,10 @@ type Actions = {
   setNewSys: (v: string) => void;
   addSys: () => void;
   removeSys: (key: string) => void;
+  setNewBookmarkName: (v: string) => void;
+  setNewBookmarkUrl: (v: string) => void;
+  addBookmark: () => void;
+  removeBookmark: (id: string) => void;
   completeJourney: (hid: string) => void;
   abortJourney: (hid: string) => void;
   reactivateJourney: (hid: string) => void;
@@ -126,6 +130,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       template: state.template,
       depts: state.depts,
       systems: state.systems,
+      bookmarks: state.bookmarks,
       hid: state.hid,
       view: state.view,
     };
@@ -138,7 +143,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, 500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.data, state.template, state.depts, state.systems, state.hid, state.view]);
+  }, [state.data, state.template, state.depts, state.systems, state.bookmarks, state.hid, state.view]);
 
   const logout = useCallback(() => {
     fetch("/api/auth/logout", { method: "POST" }).finally(() => {
@@ -502,6 +507,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const setNewBookmarkName = useCallback((v: string) => setState((s) => ({ ...s, newBookmarkName: v })), []);
+  const setNewBookmarkUrl = useCallback((v: string) => setState((s) => ({ ...s, newBookmarkUrl: v })), []);
+  const addBookmark = useCallback(() => {
+    if (!canEditRef.current) return;
+    setState((s) => {
+      const name = (s.newBookmarkName || "").trim();
+      let url = (s.newBookmarkUrl || "").trim();
+      if (!name || !url) return s;
+      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+      return {
+        ...s,
+        bookmarks: s.bookmarks.concat([{ id: "bm" + Date.now(), name, url }]),
+        newBookmarkName: "",
+        newBookmarkUrl: "",
+      };
+    });
+  }, []);
+  const removeBookmark = useCallback((id: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({ ...s, bookmarks: s.bookmarks.filter((b) => b.id !== id) }));
+  }, []);
+
   const completeJourney = useCallback((hid: string) => {
     if (!canEditRef.current) return;
     setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, status: "completed" })) }));
@@ -572,6 +599,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setNewSys,
       addSys,
       removeSys,
+      setNewBookmarkName,
+      setNewBookmarkUrl,
+      addBookmark,
+      removeBookmark,
       completeJourney,
       abortJourney,
       reactivateJourney,
@@ -585,6 +616,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, pickHRecruiter,
       toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
+      setNewBookmarkName, setNewBookmarkUrl, addBookmark, removeBookmark,
       completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, logout,
     ]
   );

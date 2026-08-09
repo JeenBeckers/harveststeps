@@ -7,6 +7,7 @@ import { ReisView } from "@/components/ReisView";
 import { DashboardView } from "@/components/DashboardView";
 import { BeheerView } from "@/components/BeheerView";
 import { OrganisatieView } from "@/components/OrganisatieView";
+import { BookmarksView } from "@/components/BookmarksView";
 import { UsersView } from "@/components/UsersView";
 import { StopModal } from "@/components/StopModal";
 import { HarvesterModal } from "@/components/HarvesterModal";
@@ -26,6 +27,7 @@ function AppShell() {
           </div>
         )}
         {view === "dashboard" && <DashboardView />}
+        {view === "bookmarks" && <BookmarksView />}
         {view === "beheer" && <BeheerView />}
         {view === "organisatie" && <OrganisatieView />}
         {view === "gebruikers" && me && <UsersView currentUserId={me.id} />}
