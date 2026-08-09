@@ -8,7 +8,7 @@ import type { Harvester, Stop } from "@/lib/types";
 type Row = { h: Harvester; cur: Stop | null; tot: number; dn: number; status: string };
 
 export function DashboardView() {
-  const { state, actions, canEdit } = useApp();
+  const { state, actions, canEdit, isAdmin } = useApp();
   const members = allMembers(state.depts);
   const activeData = state.data.filter((h) => (h.status || "active") === "active");
 
@@ -67,11 +67,18 @@ export function DashboardView() {
           <h1 className="hv-display" style={{ fontSize: "36px" }}>
             Alle reizen in beeld
           </h1>
-          {canEdit && (
-            <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddHarvester}>
-              + Harvester toevoegen
-            </button>
-          )}
+          <div style={{ display: "flex", gap: "8px" }}>
+            {isAdmin && (
+              <button className="hv-btn hv-btn--ghost" style={{ whiteSpace: "nowrap" }} onClick={actions.importHarvesters}>
+                Importeer collega's (eenmalig)
+              </button>
+            )}
+            {canEdit && (
+              <button className="hv-btn" style={{ whiteSpace: "nowrap" }} onClick={actions.openAddHarvester}>
+                + Harvester toevoegen
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="hv-kpi-grid">

@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { seedState } from "./seed";
 import { buildStops, deptGuide, makeStop, resolveOwner } from "./logic";
+import { IMPORT_HARVESTERS } from "./importData";
 import type {
   AppState,
   CurrentUser,
@@ -68,6 +69,7 @@ type Actions = {
   abortJourney: (hid: string) => void;
   reactivateJourney: (hid: string) => void;
   deleteHarvesterPermanently: (hid: string) => void;
+  importHarvesters: () => void;
   logout: () => void;
 };
 
@@ -553,6 +555,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const importHarvesters = useCallback(() => {
+    if (!isAdminRef.current) return;
+    setState((s) => {
+      const existingIds = new Set(s.data.map((x) => x.id));
+      const recruitDept = s.depts.find((d) => d.name === "Recruitment");
+      const defaultRecruiter = recruitDept && recruitDept.members.length ? recruitDept.members[0] : "Wessal Wafa";
+      const toAdd = IMPORT_HARVESTERS.filter((row) => !existingIds.has(row.id)).map((row) => ({
+        id: row.id,
+        name: row.name,
+        age: "—",
+        role: "Young professional",
+        client: row.client,
+        start: row.start,
+        recruiter: defaultRecruiter,
+        stops: [],
+        status: "active" as const,
+      }));
+      if (toAdd.length === 0) return s;
+      return { ...s, data: s.data.concat(toAdd) };
+    });
+  }, []);
+
   const actions: Actions = useMemo(
     () => ({
       setView,
@@ -607,6 +631,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       abortJourney,
       reactivateJourney,
       deleteHarvesterPermanently,
+      importHarvesters,
       logout,
     }),
     [
@@ -617,7 +642,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
       setNewBookmarkName, setNewBookmarkUrl, addBookmark, removeBookmark,
-      completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, logout,
+      completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, importHarvesters, logout,
     ]
   );
 
