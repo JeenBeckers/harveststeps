@@ -10,8 +10,9 @@ type Row = { h: Harvester; cur: Stop | null; tot: number; dn: number; status: st
 export function DashboardView() {
   const { state, actions, canEdit } = useApp();
   const members = allMembers(state.depts);
+  const activeData = state.data.filter((h) => (h.status || "active") === "active");
 
-  const withMeta: Row[] = state.data.map((h) => {
+  const withMeta: Row[] = activeData.map((h) => {
     const cur = currentStopOf(h.stops);
     const tot = h.stops.reduce((a, s) => a + s.tasks.length, 0);
     const dn = h.stops.reduce((a, s) => a + s.tasks.filter((t) => t.done).length, 0);
@@ -25,16 +26,16 @@ export function DashboardView() {
   const filtered = withMeta.filter((r) => (state.fStatus === "Alle" || r.status === state.fStatus) && matchOwner(r));
 
   const kpis = [
-    { label: "Actieve reizen", value: String(withMeta.filter((r) => r.cur).length), sub: "van " + state.data.length + " harvesters" },
+    { label: "Actieve reizen", value: String(withMeta.filter((r) => r.cur).length), sub: "van " + activeData.length + " harvesters" },
     { label: "Openstaande acties", value: String(withMeta.reduce((a, r) => a + (r.tot - r.dn), 0)), sub: "over alle reizen" },
     {
       label: "Afgeronde haltes",
-      value: String(state.data.reduce((a, x) => a + x.stops.filter((s) => stopStatus(s) === "Afgerond").length, 0)),
+      value: String(activeData.reduce((a, x) => a + x.stops.filter((s) => stopStatus(s) === "Afgerond").length, 0)),
       sub: "kwaliteitscontrole akkoord",
     },
     {
       label: "Individuele haltes",
-      value: String(state.data.reduce((a, x) => a + x.stops.filter((s) => s.custom).length, 0)),
+      value: String(activeData.reduce((a, x) => a + x.stops.filter((s) => s.custom).length, 0)),
       sub: "buiten de standaardroute",
     },
   ];

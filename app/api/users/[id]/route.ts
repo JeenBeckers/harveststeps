@@ -6,8 +6,12 @@ import type { CurrentUser } from "@/lib/types";
 async function requireEditor(): Promise<{ user: CurrentUser } | { error: NextResponse }> {
   const user = await getCurrentUser();
   if (!user) return { error: NextResponse.json({ error: "Niet ingelogd" }, { status: 401 }) };
-  if (user.role !== "editor") return { error: NextResponse.json({ error: "Geen rechten" }, { status: 403 }) };
+  if (user.role !== "editor" && user.role !== "admin") return { error: NextResponse.json({ error: "Geen rechten" }, { status: 403 }) };
   return { user };
+}
+
+function canManage(role: string): boolean {
+  return role === "editor" || role === "admin";
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,16 +21,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const targetId = Number(id);
 
   const body = await request.json().catch(() => null);
-  const role = body?.role === "editor" ? "editor" : body?.role === "viewer" ? "viewer" : null;
+  const role = body?.role === "admin" ? "admin" : body?.role === "editor" ? "editor" : body?.role === "viewer" ? "viewer" : null;
   if (!role) return NextResponse.json({ error: "Ongeldige rol." }, { status: 400 });
 
   const target = await findUserById(targetId);
   if (!target) return NextResponse.json({ error: "Gebruiker niet gevonden." }, { status: 404 });
 
-  if (target.role === "editor" && role === "viewer") {
+  if (canManage(target.role) && !canManage(role)) {
     const editors = await countEditors();
     if (editors <= 1) {
-      return NextResponse.json({ error: "Er moet minstens één bewerker overblijven." }, { status: 400 });
+      return NextResponse.json({ error: "Er moet minstens één bewerker of beheerder overblijven." }, { status: 400 });
     }
   }
 
@@ -47,10 +51,10 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
   const target = await findUserById(targetId);
   if (!target) return NextResponse.json({ error: "Gebruiker niet gevonden." }, { status: 404 });
 
-  if (target.role === "editor") {
+  if (canManage(target.role)) {
     const editors = await countEditors();
     if (editors <= 1) {
-      return NextResponse.json({ error: "Er moet minstens één bewerker overblijven." }, { status: 400 });
+      return NextResponse.json({ error: "Er moet minstens één bewerker of beheerder overblijven." }, { status: 400 });
     }
   }
 

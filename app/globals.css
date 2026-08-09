@@ -585,6 +585,14 @@ textarea {
 .hv-hsidebar__head {
   padding: 20px 20px 12px;
 }
+.hv-hsidebar__controls {
+  display: flex;
+  gap: 6px;
+}
+.hv-hsidebar__controls .hv-filter {
+  flex: 1;
+  text-align: center;
+}
 .hv-hsidebar__list {
   flex: 1;
   overflow-y: auto;
@@ -753,6 +761,33 @@ textarea {
 .hv-stop__phase {
   margin: 0 0 10px 52px;
   color: var(--hv-fg-subtle);
+}
+.hv-phase-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0 0 10px 0;
+  padding: 4px 8px 4px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  border-radius: var(--hv-r-sm);
+  transition: background 160ms ease;
+}
+.hv-phase-toggle:hover {
+  background: rgba(9, 40, 18, 0.05);
+}
+.hv-phase-toggle__chevron {
+  display: inline-flex;
+  color: var(--hv-fg-subtle);
+  font-size: 11px;
+  transition: transform 160ms ease;
+  transform: translateX(38px);
+}
+.hv-phase-toggle__chevron.is-collapsed {
+  transform: translateX(38px) rotate(-90deg);
 }
 .hv-stop__row {
   display: flex;

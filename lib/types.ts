@@ -1,6 +1,6 @@
 export type View = "reis" | "dashboard" | "beheer" | "organisatie" | "gebruikers";
 
-export type Role = "viewer" | "editor";
+export type Role = "viewer" | "editor" | "admin";
 
 export type CurrentUser = {
   id: number;
@@ -61,6 +61,8 @@ export type Stop = {
   tasks: StopTask[];
 };
 
+export type HarvesterStatus = "active" | "completed" | "aborted";
+
 export type Harvester = {
   id: string;
   name: string;
@@ -70,6 +72,7 @@ export type Harvester = {
   start: string;
   recruiter: string;
   stops: Stop[];
+  status: HarvesterStatus;
 };
 
 export type StopStatus = "Afgerond" | "Bezig" | "Nog te doen" | "Niet gestart";

@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { seedPersistedState } from "./seed";
 import type { PersistedAppState } from "./types";
 
-export type Role = "viewer" | "editor";
+export type Role = "viewer" | "editor" | "admin";
 
 export type DbUser = {
   id: number;
@@ -48,6 +48,7 @@ export async function ensureSchema(): Promise<void> {
 
   await ensureSeedUser();
   await ensureSeedAppState();
+  await ensureSeedAdminPromoted();
 }
 
 async function ensureSeedUser(): Promise<void> {
@@ -63,9 +64,20 @@ async function ensureSeedUser(): Promise<void> {
   const passwordHash = await bcrypt.hash(password, 10);
   await sql`
     INSERT INTO users (email, password_hash, role)
-    VALUES (${email.toLowerCase().trim()}, ${passwordHash}, 'editor')
+    VALUES (${email.toLowerCase().trim()}, ${passwordHash}, 'admin')
     ON CONFLICT (email) DO NOTHING
   `;
+}
+
+/** Promotes SEED_ADMIN_EMAIL to admin if no admin exists yet (covers accounts seeded before the admin role existed). */
+async function ensureSeedAdminPromoted(): Promise<void> {
+  const sql = getSql();
+  const rows = await sql`SELECT count(*)::int AS count FROM users WHERE role = 'admin'`;
+  if ((rows[0] as { count: number }).count > 0) return;
+
+  const email = process.env.SEED_ADMIN_EMAIL;
+  if (!email) return;
+  await sql`UPDATE users SET role = 'admin' WHERE email = ${email.toLowerCase().trim()}`;
 }
 
 async function ensureSeedAppState(): Promise<void> {
@@ -118,7 +130,7 @@ export async function listUsers(): Promise<Omit<DbUser, "passwordHash">[]> {
 export async function countEditors(): Promise<number> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT count(*)::int AS count FROM users WHERE role = 'editor'`;
+  const rows = await sql`SELECT count(*)::int AS count FROM users WHERE role IN ('editor', 'admin')`;
   return (rows[0] as { count: number }).count;
 }
 

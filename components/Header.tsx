@@ -14,7 +14,8 @@ const BASE_NAV_ITEMS: [View, string][] = [
 
 export function Header() {
   const { state, actions, me, canEdit } = useApp();
-  const activeJourneys = state.data.filter((x) => x.stops.length).length;
+  const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
+  const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
   const navItems: [View, string][] = canEdit ? [...BASE_NAV_ITEMS, ["gebruikers", "Gebruikers"]] : BASE_NAV_ITEMS;
 
   return (
@@ -37,7 +38,7 @@ export function Header() {
       <div className="hv-header__meta">
         <span className="hv-eyebrow hv-header__metatext">{activeJourneys} actieve reizen</span>
         <div className="hv-header__user">
-          <span className="hv-role-chip">{canEdit ? "Bewerker" : "Bekijker"}</span>
+          <span className="hv-role-chip">{roleLabel}</span>
           <div className="hv-header__avatar" title={me?.email}>
             {me ? initials(me.email.split("@")[0].replace(/[._]/g, " ")) : ""}
           </div>

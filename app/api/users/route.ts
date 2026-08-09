@@ -5,7 +5,7 @@ import { createUser, listUsers } from "@/lib/db";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-  if (user.role !== "editor") return NextResponse.json({ error: "Geen rechten" }, { status: 403 });
+  if (user.role !== "editor" && user.role !== "admin") return NextResponse.json({ error: "Geen rechten" }, { status: 403 });
 
   const users = await listUsers();
   return NextResponse.json(users);
@@ -14,12 +14,12 @@ export async function GET() {
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-  if (user.role !== "editor") return NextResponse.json({ error: "Geen rechten" }, { status: 403 });
+  if (user.role !== "editor" && user.role !== "admin") return NextResponse.json({ error: "Geen rechten" }, { status: 403 });
 
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
   const password = typeof body?.password === "string" ? body.password : "";
-  const role = body?.role === "editor" ? "editor" : "viewer";
+  const role = body?.role === "admin" ? "admin" : body?.role === "editor" ? "editor" : "viewer";
 
   if (!email || !email.includes("@")) {
     return NextResponse.json({ error: "Ongeldig e-mailadres." }, { status: 400 });

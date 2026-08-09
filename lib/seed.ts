@@ -18,6 +18,7 @@ export function seedPersistedState(): PersistedAppState {
       start: h.start,
       recruiter: h.recruiter,
       stops: h.reached < 0 ? [] : buildStops(h.reached, h.partial, h.recruiter, TEMPLATE, DEFAULT_DEPTS),
+      status: "active",
     })),
   };
 }

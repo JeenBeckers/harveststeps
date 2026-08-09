@@ -60,6 +60,10 @@ type Actions = {
   setNewSys: (v: string) => void;
   addSys: () => void;
   removeSys: (key: string) => void;
+  completeJourney: (hid: string) => void;
+  abortJourney: (hid: string) => void;
+  reactivateJourney: (hid: string) => void;
+  deleteHarvesterPermanently: (hid: string) => void;
   logout: () => void;
 };
 
@@ -69,6 +73,7 @@ const AppContext = createContext<{
   deptDrafts: Record<string, string>;
   me: CurrentUser | null;
   canEdit: boolean;
+  isAdmin: boolean;
 } | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -77,7 +82,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<CurrentUser | null>(null);
   const hydratedRef = useRef(false);
   const canEditRef = useRef(false);
-  canEditRef.current = me?.role === "editor";
+  const isAdminRef = useRef(false);
+  canEditRef.current = me?.role === "editor" || me?.role === "admin";
+  isAdminRef.current = me?.role === "admin";
 
   useEffect(() => {
     let cancelled = false;
@@ -414,6 +421,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         start: (hm.start || "").trim() || "—",
         recruiter: rec,
         stops: hm.startNow ? buildStops(0, 0, rec, s.template, s.depts) : [],
+        status: "active",
       };
       return { ...s, data: s.data.concat([newHarvester]), hid: id, sid: null, view: "reis", hmodal: { ...s.hmodal, open: false } };
     });
@@ -494,6 +502,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const completeJourney = useCallback((hid: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, status: "completed" })) }));
+  }, []);
+
+  const abortJourney = useCallback((hid: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, status: "aborted" })) }));
+  }, []);
+
+  const reactivateJourney = useCallback((hid: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, status: "active" })) }));
+  }, []);
+
+  const deleteHarvesterPermanently = useCallback((hid: string) => {
+    if (!isAdminRef.current) return;
+    setState((s) => ({
+      ...s,
+      data: s.data.filter((x) => x.id !== hid),
+      hid: s.hid === hid ? s.data.find((x) => x.id !== hid)?.id || "" : s.hid,
+    }));
+  }, []);
+
   const actions: Actions = useMemo(
     () => ({
       setView,
@@ -540,6 +572,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setNewSys,
       addSys,
       removeSys,
+      completeJourney,
+      abortJourney,
+      reactivateJourney,
+      deleteHarvesterPermanently,
       logout,
     }),
     [
@@ -548,12 +584,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       toggleModalSys, setModalTaskDraft, setModalPosition, addModalTask, patchModalTask, removeModalTask, submitModal,
       openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, pickHRecruiter,
       toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
-      addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys, logout,
+      addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
+      completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, logout,
     ]
   );
 
-  const canEdit = me?.role === "editor";
-  const value = useMemo(() => ({ state, actions, deptDrafts, me, canEdit }), [state, actions, deptDrafts, me, canEdit]);
+  const canEdit = me?.role === "editor" || me?.role === "admin";
+  const isAdmin = me?.role === "admin";
+  const value = useMemo(() => ({ state, actions, deptDrafts, me, canEdit, isAdmin }), [state, actions, deptDrafts, me, canEdit, isAdmin]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

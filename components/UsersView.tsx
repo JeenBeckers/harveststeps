@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-type ApiUser = { id: number; email: string; role: "viewer" | "editor"; createdAt: string };
+type UserRole = "viewer" | "editor" | "admin";
+type ApiUser = { id: number; email: string; role: UserRole; createdAt: string };
 
 export function UsersView({ currentUserId }: { currentUserId: number }) {
   const [users, setUsers] = useState<ApiUser[] | null>(null);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"viewer" | "editor">("viewer");
+  const [role, setRole] = useState<UserRole>("viewer");
   const [busy, setBusy] = useState(false);
 
   const load = () => {
@@ -45,7 +46,7 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
     }
   };
 
-  const setUserRole = async (id: number, newRole: "viewer" | "editor") => {
+  const setUserRole = async (id: number, newRole: UserRole) => {
     setError("");
     const res = await fetch(`/api/users/${id}`, {
       method: "PATCH",
@@ -76,7 +77,7 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
         </h1>
         <p style={{ color: "var(--hv-fg-muted)", maxWidth: "560px", marginBottom: "30px" }}>
           Bekijkers kunnen de reizen, het dashboard, de route en de organisatie zien maar niets wijzigen.
-          Bewerkers mogen alles aanpassen.
+          Bewerkers mogen alles aanpassen. Beheerders mogen daarnaast harvesters permanent verwijderen.
         </p>
 
         {error && (
@@ -106,6 +107,13 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
                 disabled={u.role === "editor"}
               >
                 Bewerken
+              </button>
+              <button
+                className={`hv-filter${u.role === "admin" ? " is-active" : ""}`}
+                onClick={() => setUserRole(u.id, "admin")}
+                disabled={u.role === "admin"}
+              >
+                Beheren
               </button>
               <button
                 className="hv-icon-btn"
@@ -151,6 +159,9 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
             </button>
             <button type="button" className={`hv-filter${role === "editor" ? " is-active" : ""}`} onClick={() => setRole("editor")}>
               Bewerken
+            </button>
+            <button type="button" className={`hv-filter${role === "admin" ? " is-active" : ""}`} onClick={() => setRole("admin")}>
+              Beheren
             </button>
           </div>
           <button className="hv-btn" type="submit" disabled={busy} style={{ alignSelf: "flex-start" }}>
