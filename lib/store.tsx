@@ -557,6 +557,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const importHarvesters = useCallback(() => {
     if (!isAdminRef.current) return;
+    let added = 0;
+    let skipped = 0;
     setState((s) => {
       const existingIds = new Set(s.data.map((x) => x.id));
       const recruitDept = s.depts.find((d) => d.name === "Recruitment");
@@ -572,9 +574,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         stops: [],
         status: "active" as const,
       }));
+      added = toAdd.length;
+      skipped = IMPORT_HARVESTERS.length - toAdd.length;
       if (toAdd.length === 0) return s;
       return { ...s, data: s.data.concat(toAdd) };
     });
+    if (added > 0) {
+      window.alert(`${added} collega's toegevoegd.${skipped ? ` ${skipped} stonden er al in.` : ""}`);
+    } else {
+      window.alert("Niets toegevoegd: alle collega's uit de lijst staan al in het systeem.");
+    }
   }, []);
 
   const actions: Actions = useMemo(
