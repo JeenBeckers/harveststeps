@@ -34,7 +34,7 @@ export async function verifySessionToken(token: string): Promise<CurrentUser | n
   try {
     const { payload } = await jwtVerify(token, secretKey());
     const role = payload.role;
-    if (!payload.sub || typeof payload.email !== "string" || (role !== "viewer" && role !== "editor")) {
+    if (!payload.sub || typeof payload.email !== "string" || (role !== "viewer" && role !== "editor" && role !== "admin")) {
       return null;
     }
     return { id: Number(payload.sub), email: payload.email, role: role as Role };
