@@ -2,9 +2,6 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 
 const APOLLO_BASE = "https://api.apollo.io/v1";
-// Jeen's mailbox, looked up 2026-08-10 via apollo_email_accounts_index. Override via env if it changes.
-const DEFAULT_SENDER_EMAIL_ACCOUNT_ID = "6a57e6bbe368c9001055bfa8";
-const DEFAULT_SENDER_EMAIL = "jeen.beckers@harvest.nl";
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -34,8 +31,6 @@ export async function POST(request: Request) {
 
   const [firstName, ...rest] = candidateName.split(" ").filter(Boolean);
   const lastName = rest.join(" ");
-  const senderEmailAccountId = process.env.APOLLO_SENDER_EMAIL_ACCOUNT_ID || DEFAULT_SENDER_EMAIL_ACCOUNT_ID;
-  const senderEmail = process.env.APOLLO_SENDER_EMAIL || DEFAULT_SENDER_EMAIL;
 
   const contactRes = await fetch(`${APOLLO_BASE}/contacts`, {
     method: "POST",
@@ -80,18 +75,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Kon het conceptbericht niet aanmaken in Apollo." }, { status: 502 });
   }
 
-  const sendRes = await fetch(`${APOLLO_BASE}/emailer_messages/${messageId}/send_now`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": apiKey },
-    body: JSON.stringify({ send_from: { email_account_id: senderEmailAccountId, email: senderEmail } }),
-  });
-  if (!sendRes.ok) {
-    const errBody = await sendRes.json().catch(() => null);
-    return NextResponse.json(
-      { error: errBody?.error || errBody?.message || "Kon de mail niet versturen via Apollo." },
-      { status: 502 }
-    );
-  }
-
-  return NextResponse.json({ ok: true });
+  // Deliberately stops at a draft — every Apollo mail in this app requires a human review-and-send
+  // step in Apollo itself, never an automatic send from HarvestSteps.
+  return NextResponse.json({ ok: true, messageId });
 }

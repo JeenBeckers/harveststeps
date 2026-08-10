@@ -242,7 +242,7 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
               {coachDraft && coachDraft.taskId === t.id && (
                 <div style={{ margin: "6px 0 10px 34px", padding: "12px", borderRadius: "8px", background: "var(--hv-cream-200)" }}>
                   <p className="hv-label" style={{ color: "var(--hv-fg-muted)", margin: "0 0 8px" }}>
-                    Intake-mail naar kandidaat (aan) + coach (cc) — verstuurt direct via Apollo
+                    Intake-mail naar kandidaat (aan) + coach (cc) — wordt als concept klaargezet in Apollo, jij controleert en verstuurt hem daar
                   </p>
                   <input
                     className="hv-input"
@@ -267,7 +267,7 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
                   />
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button className="hv-btn hv-btn--sm" disabled={coachBusy} onClick={submitCoachIntro}>
-                      {coachBusy ? "Bezig…" : "Nu versturen & afvinken"}
+                      {coachBusy ? "Bezig…" : "Klaarzetten als concept & afvinken"}
                     </button>
                     <button
                       className="hv-btn hv-btn--ghost hv-btn--sm"
