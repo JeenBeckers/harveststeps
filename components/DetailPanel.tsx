@@ -3,75 +3,12 @@
 import { useState } from "react";
 import { useApp } from "@/lib/store";
 import { initials, statusClassName, stopStatus } from "@/lib/logic";
-import type { Harvester, Stop } from "@/lib/types";
+import type { Harvester, Stop, StopTask } from "@/lib/types";
 
-const WELCOME_EMAIL_STOP_NAME = "Matchgesprek met klant";
+const WELCOME_EMAIL_TASK_LABEL = "versturen welkom-mail";
 
-function WelcomeEmailAction({ harvester, canEdit }: { harvester: Harvester; canEdit: boolean }) {
-  const { actions } = useApp();
-  const [email, setEmail] = useState(harvester.email || "");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const send = async () => {
-    const trimmed = email.trim();
-    if (!trimmed) {
-      setMsg({ ok: false, text: "Vul eerst een e-mailadres in." });
-      return;
-    }
-    setBusy(true);
-    setMsg(null);
-    try {
-      if (trimmed !== (harvester.email || "")) actions.setHarvesterEmail(harvester.id, trimmed);
-      const res = await fetch("/api/apollo/welcome-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ harvesterId: harvester.id, name: harvester.name, email: trimmed }),
-      });
-      const resBody = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(resBody.error || "Onbekende fout.");
-      actions.markWelcomeEmailSent(harvester.id);
-      setMsg({ ok: true, text: "Klaargezet in de Apollo-sequence Welkomstmail." });
-    } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : "Kon niet klaarzetten in Apollo." });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div>
-      <p className="hv-label" style={{ color: "var(--hv-fg-muted)", margin: "0 0 8px" }}>
-        Welkomstmail via Apollo
-      </p>
-      {canEdit ? (
-        <>
-          <input
-            className="hv-input"
-            style={{ marginBottom: "8px" }}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="voornaam.achternaam@harvest.nl"
-          />
-          <button className="hv-btn hv-btn--ghost hv-btn--sm" disabled={busy} onClick={send}>
-            {busy ? "Bezig…" : harvester.apolloWelcomeSentAt ? "Opnieuw klaarzetten" : "Welkomstmail klaarzetten in Apollo"}
-          </button>
-          {harvester.apolloWelcomeSentAt && (
-            <p style={{ fontSize: "10.5px", color: "var(--hv-fg-subtle)", margin: "8px 0 0" }}>
-              Laatst klaargezet op {new Date(harvester.apolloWelcomeSentAt).toLocaleString("nl-NL")}.
-            </p>
-          )}
-          {msg && (
-            <p style={{ fontSize: "11px", margin: "8px 0 0", color: msg.ok ? "var(--hv-success)" : "var(--hv-danger)" }}>
-              {msg.text}
-            </p>
-          )}
-        </>
-      ) : (
-        <p style={{ fontSize: "11px", color: "var(--hv-fg-subtle)" }}>Alleen bewerkers en beheerders kunnen dit klaarzetten.</p>
-      )}
-    </div>
-  );
+function isWelcomeEmailTask(t: StopTask): boolean {
+  return t.label.trim().toLowerCase() === WELCOME_EMAIL_TASK_LABEL;
 }
 
 export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: Stop }) {
@@ -80,6 +17,49 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
   const idx = harvester.stops.indexOf(stop);
   const doneCount = stop.tasks.filter((t) => t.done).length;
   const sysMap = new Map(state.systems.map((s) => [s.key, s]));
+
+  const [welcomeDraft, setWelcomeDraft] = useState<{ taskId: string; email: string; name: string } | null>(null);
+  const [welcomeBusy, setWelcomeBusy] = useState(false);
+  const [welcomeMsg, setWelcomeMsg] = useState<string | null>(null);
+
+  const handleTaskClick = (t: StopTask) => {
+    if (!canEdit) return;
+    if (isWelcomeEmailTask(t) && !t.done) {
+      setWelcomeDraft({ taskId: t.id, email: harvester.email || "", name: harvester.name });
+      setWelcomeMsg(null);
+      return;
+    }
+    actions.toggleTask(harvester.id, stop.id, t.id);
+  };
+
+  const submitWelcomeEmail = async () => {
+    if (!welcomeDraft) return;
+    const email = welcomeDraft.email.trim();
+    const name = welcomeDraft.name.trim();
+    if (!email || !name) {
+      setWelcomeMsg("Vul naam en e-mailadres in.");
+      return;
+    }
+    setWelcomeBusy(true);
+    setWelcomeMsg(null);
+    try {
+      const res = await fetch("/api/apollo/welcome-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ harvesterId: harvester.id, name, email }),
+      });
+      const resBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resBody.error || "Onbekende fout.");
+      if (email !== (harvester.email || "")) actions.setHarvesterEmail(harvester.id, email);
+      actions.markWelcomeEmailSent(harvester.id);
+      actions.toggleTask(harvester.id, stop.id, welcomeDraft.taskId);
+      setWelcomeDraft(null);
+    } catch (e) {
+      setWelcomeMsg(e instanceof Error ? e.message : "Kon niet klaarzetten in Apollo.");
+    } finally {
+      setWelcomeBusy(false);
+    }
+  };
 
   return (
     <aside className="hv-detail">
@@ -151,29 +131,72 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "2px", marginBottom: "24px" }}>
           {stop.tasks.map((t) => (
-            <button
-              key={t.id}
-              className="hv-task-row"
-              style={canEdit ? undefined : { cursor: "default" }}
-              onClick={canEdit ? () => actions.toggleTask(harvester.id, stop.id, t.id) : undefined}
-            >
-              <span className={`hv-checkbox${t.done ? " is-checked" : ""}`}>{t.done ? "✓" : ""}</span>
-              <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
-                <span
-                  style={{
-                    fontSize: "12.5px",
-                    lineHeight: 1.4,
-                    color: t.done ? "var(--hv-fg-muted)" : "var(--hv-fg)",
-                    textDecoration: t.done ? "line-through" : "none",
-                  }}
-                >
-                  {t.label}
+            <div key={t.id}>
+              <button
+                className="hv-task-row"
+                style={canEdit ? undefined : { cursor: "default" }}
+                onClick={canEdit ? () => handleTaskClick(t) : undefined}
+              >
+                <span className={`hv-checkbox${t.done ? " is-checked" : ""}`}>{t.done ? "✓" : ""}</span>
+                <span style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <span
+                    style={{
+                      fontSize: "12.5px",
+                      lineHeight: 1.4,
+                      color: t.done ? "var(--hv-fg-muted)" : "var(--hv-fg)",
+                      textDecoration: t.done ? "line-through" : "none",
+                    }}
+                  >
+                    {t.label}
+                  </span>
+                  <span style={{ fontSize: "10px", color: "var(--hv-fg-subtle)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                    {t.owner}
+                    {isWelcomeEmailTask(t) && t.done && harvester.apolloWelcomeSentAt && (
+                      <> · klaargezet in Apollo op {new Date(harvester.apolloWelcomeSentAt).toLocaleString("nl-NL")}</>
+                    )}
+                  </span>
                 </span>
-                <span style={{ fontSize: "10px", color: "var(--hv-fg-subtle)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                  {t.owner}
-                </span>
-              </span>
-            </button>
+              </button>
+              {welcomeDraft && welcomeDraft.taskId === t.id && (
+                <div style={{ margin: "6px 0 10px 34px", padding: "12px", borderRadius: "8px", background: "var(--hv-cream-200)" }}>
+                  <p className="hv-label" style={{ color: "var(--hv-fg-muted)", margin: "0 0 8px" }}>
+                    Welkomstmail klaarzetten in Apollo
+                  </p>
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "6px" }}
+                    value={welcomeDraft.name}
+                    onChange={(e) => setWelcomeDraft({ ...welcomeDraft, name: e.target.value })}
+                    placeholder="Voor- en achternaam"
+                  />
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "8px" }}
+                    value={welcomeDraft.email}
+                    onChange={(e) => setWelcomeDraft({ ...welcomeDraft, email: e.target.value })}
+                    placeholder="voornaam.achternaam@harvest.nl"
+                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button className="hv-btn hv-btn--sm" disabled={welcomeBusy} onClick={submitWelcomeEmail}>
+                      {welcomeBusy ? "Bezig…" : "Versturen & afvinken"}
+                    </button>
+                    <button
+                      className="hv-btn hv-btn--ghost hv-btn--sm"
+                      disabled={welcomeBusy}
+                      onClick={() => {
+                        setWelcomeDraft(null);
+                        setWelcomeMsg(null);
+                      }}
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+                  {welcomeMsg && (
+                    <p style={{ fontSize: "11px", margin: "8px 0 0", color: "var(--hv-danger)" }}>{welcomeMsg}</p>
+                  )}
+                </div>
+              )}
+            </div>
           ))}
         </div>
 
@@ -202,13 +225,6 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
             );
           })}
         </div>
-
-        {stop.name === WELCOME_EMAIL_STOP_NAME && (
-          <>
-            <hr className="hv-divider" style={{ margin: "24px 0 16px" }} />
-            <WelcomeEmailAction harvester={harvester} canEdit={canEdit} />
-          </>
-        )}
 
         <hr className="hv-divider" style={{ margin: "24px 0 16px" }} />
         <p style={{ fontSize: "11px", color: "var(--hv-fg-subtle)", lineHeight: 1.5, margin: 0 }}>
