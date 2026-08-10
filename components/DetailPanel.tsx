@@ -6,7 +6,7 @@ import { initials, statusClassName, stopStatus } from "@/lib/logic";
 import type { Harvester, Stop, StopTask } from "@/lib/types";
 
 const WELCOME_EMAIL_TASK_LABEL = "versturen welkom-mail";
-const COACH_INTRO_TASK_LABEL = "kennismaking met de soft skills coach inplannen";
+const COACH_INTRO_TASK_LABEL = "kennismaking met soft skill coach inplannen";
 
 function isWelcomeEmailTask(t: StopTask): boolean {
   return t.label.trim().toLowerCase() === WELCOME_EMAIL_TASK_LABEL;
