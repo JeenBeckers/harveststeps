@@ -66,6 +66,16 @@ export function HarvesterModal() {
           />
 
           <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>
+            E-mailadres
+          </p>
+          <input
+            className="hv-input hv-field"
+            value={hm.email}
+            onChange={(e) => actions.setHEmail(e.target.value)}
+            placeholder="voornaam.achternaam@harvest.nl"
+          />
+
+          <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>
             Eindverantwoordelijke recruitment
           </p>
           <div className="hv-pill-choices" style={{ marginBottom: "8px" }}>

@@ -1,8 +1,78 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/lib/store";
 import { initials, statusClassName, stopStatus } from "@/lib/logic";
 import type { Harvester, Stop } from "@/lib/types";
+
+const WELCOME_EMAIL_STOP_NAME = "Matchgesprek met klant";
+
+function WelcomeEmailAction({ harvester, canEdit }: { harvester: Harvester; canEdit: boolean }) {
+  const { actions } = useApp();
+  const [email, setEmail] = useState(harvester.email || "");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const send = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setMsg({ ok: false, text: "Vul eerst een e-mailadres in." });
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    try {
+      if (trimmed !== (harvester.email || "")) actions.setHarvesterEmail(harvester.id, trimmed);
+      const res = await fetch("/api/apollo/welcome-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ harvesterId: harvester.id, name: harvester.name, email: trimmed }),
+      });
+      const resBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resBody.error || "Onbekende fout.");
+      actions.markWelcomeEmailSent(harvester.id);
+      setMsg({ ok: true, text: "Klaargezet in de Apollo-sequence Welkomstmail." });
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Kon niet klaarzetten in Apollo." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <p className="hv-label" style={{ color: "var(--hv-fg-muted)", margin: "0 0 8px" }}>
+        Welkomstmail via Apollo
+      </p>
+      {canEdit ? (
+        <>
+          <input
+            className="hv-input"
+            style={{ marginBottom: "8px" }}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="voornaam.achternaam@harvest.nl"
+          />
+          <button className="hv-btn hv-btn--ghost hv-btn--sm" disabled={busy} onClick={send}>
+            {busy ? "Bezig…" : harvester.apolloWelcomeSentAt ? "Opnieuw klaarzetten" : "Welkomstmail klaarzetten in Apollo"}
+          </button>
+          {harvester.apolloWelcomeSentAt && (
+            <p style={{ fontSize: "10.5px", color: "var(--hv-fg-subtle)", margin: "8px 0 0" }}>
+              Laatst klaargezet op {new Date(harvester.apolloWelcomeSentAt).toLocaleString("nl-NL")}.
+            </p>
+          )}
+          {msg && (
+            <p style={{ fontSize: "11px", margin: "8px 0 0", color: msg.ok ? "var(--hv-success)" : "var(--hv-danger)" }}>
+              {msg.text}
+            </p>
+          )}
+        </>
+      ) : (
+        <p style={{ fontSize: "11px", color: "var(--hv-fg-subtle)" }}>Alleen bewerkers en beheerders kunnen dit klaarzetten.</p>
+      )}
+    </div>
+  );
+}
 
 export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: Stop }) {
   const { state, actions, canEdit } = useApp();
@@ -132,6 +202,13 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
             );
           })}
         </div>
+
+        {stop.name === WELCOME_EMAIL_STOP_NAME && (
+          <>
+            <hr className="hv-divider" style={{ margin: "24px 0 16px" }} />
+            <WelcomeEmailAction harvester={harvester} canEdit={canEdit} />
+          </>
+        )}
 
         <hr className="hv-divider" style={{ margin: "24px 0 16px" }} />
         <p style={{ fontSize: "11px", color: "var(--hv-fg-subtle)", lineHeight: 1.5, margin: 0 }}>

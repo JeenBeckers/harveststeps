@@ -79,6 +79,8 @@ export type Harvester = {
   recruiter: string;
   stops: Stop[];
   status: HarvesterStatus;
+  email?: string;
+  apolloWelcomeSentAt?: string;
 };
 
 export type StopStatus = "Afgerond" | "Bezig" | "Nog te doen" | "Niet gestart";
@@ -114,6 +116,7 @@ export type HarvesterModalState = {
   start: string;
   recruiter: string;
   startNow: boolean;
+  email: string;
 };
 
 export type PersistedAppState = {

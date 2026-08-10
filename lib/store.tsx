@@ -44,9 +44,12 @@ type Actions = {
   setHRole: (v: string) => void;
   setHClient: (v: string) => void;
   setHStart: (v: string) => void;
+  setHEmail: (v: string) => void;
   pickHRecruiter: (v: string) => void;
   toggleHStartNow: () => void;
   submitHModal: () => void;
+  setHarvesterEmail: (hid: string, email: string) => void;
+  markWelcomeEmailSent: (hid: string) => void;
   setFStatus: (v: string) => void;
   setFOwner: (v: string) => void;
   resetFilters: () => void;
@@ -393,7 +396,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => {
       const recruitDept = s.depts.find((d) => d.name === "Recruitment");
       const recruiters = recruitDept && recruitDept.members.length ? recruitDept.members : [];
-      return { ...s, hmodal: { open: true, name: "", age: "", role: "", client: "", start: "", recruiter: recruiters[0] || "Wessal Wafa", startNow: true } };
+      return { ...s, hmodal: { open: true, name: "", age: "", role: "", client: "", start: "", recruiter: recruiters[0] || "Wessal Wafa", startNow: true, email: "" } };
     });
   }, []);
 
@@ -406,6 +409,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setHRole = useCallback((v: string) => patchHModal({ role: v }), [patchHModal]);
   const setHClient = useCallback((v: string) => patchHModal({ client: v }), [patchHModal]);
   const setHStart = useCallback((v: string) => patchHModal({ start: v }), [patchHModal]);
+  const setHEmail = useCallback((v: string) => patchHModal({ email: v }), [patchHModal]);
   const pickHRecruiter = useCallback((v: string) => patchHModal({ recruiter: v }), [patchHModal]);
   const toggleHStartNow = useCallback(() => setState((s) => ({ ...s, hmodal: { ...s.hmodal, startNow: !s.hmodal.startNow } })), []);
 
@@ -429,6 +433,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         recruiter: rec,
         stops: hm.startNow ? buildStops(0, 0, rec, s.template, s.depts) : [],
         status: "active",
+        email: (hm.email || "").trim(),
       };
       return { ...s, data: s.data.concat([newHarvester]), hid: id, sid: null, view: "reis", hmodal: { ...s.hmodal, open: false } };
     });
@@ -555,6 +560,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const setHarvesterEmail = useCallback((hid: string, email: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, email })) }));
+  }, []);
+
+  const markWelcomeEmailSent = useCallback((hid: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, apolloWelcomeSentAt: new Date().toISOString() })) }));
+  }, []);
+
   const importHarvesters = useCallback(() => {
     if (!isAdminRef.current) return;
     let added = 0;
@@ -615,9 +630,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setHRole,
       setHClient,
       setHStart,
+      setHEmail,
       pickHRecruiter,
       toggleHStartNow,
       submitHModal,
+      setHarvesterEmail,
+      markWelcomeEmailSent,
       setFStatus,
       setFOwner,
       resetFilters,
@@ -647,8 +665,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setView, pickHarvester, openStop, toggleTask, startJourney, openAddStop, openAddTemplateStop,
       openEditStop, openEditTemplate, closeModal, setModalName, pickModalDept, pickModalGuide,
       toggleModalSys, setModalTaskDraft, setModalPosition, addModalTask, patchModalTask, removeModalTask, submitModal,
-      openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, pickHRecruiter,
-      toggleHStartNow, submitHModal, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
+      openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, setHEmail, pickHRecruiter,
+      toggleHStartNow, submitHModal, setHarvesterEmail, markWelcomeEmailSent, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
       setNewBookmarkName, setNewBookmarkUrl, addBookmark, removeBookmark,
       completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, importHarvesters, logout,

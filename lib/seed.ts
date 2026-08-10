@@ -37,6 +37,6 @@ export function seedState(): AppState {
     newBookmarkName: "",
     newBookmarkUrl: "",
     modal: { open: false, mode: "harvester", editId: null, name: "", dept: "ESM", guide: ESM_LEAD, sys: ["slack"], tasks: [], taskDraft: "", position: 1 },
-    hmodal: { open: false, name: "", age: "", role: "", client: "", start: "", recruiter: "Wessal Wafa", startNow: true },
+    hmodal: { open: false, name: "", age: "", role: "", client: "", start: "", recruiter: "Wessal Wafa", startNow: true, email: "" },
   };
 }
