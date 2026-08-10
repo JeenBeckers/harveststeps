@@ -6,9 +6,14 @@ import { initials, statusClassName, stopStatus } from "@/lib/logic";
 import type { Harvester, Stop, StopTask } from "@/lib/types";
 
 const WELCOME_EMAIL_TASK_LABEL = "versturen welkom-mail";
+const COACH_INTRO_TASK_LABEL = "kennismaking met de soft skills coach inplannen";
 
 function isWelcomeEmailTask(t: StopTask): boolean {
   return t.label.trim().toLowerCase() === WELCOME_EMAIL_TASK_LABEL;
+}
+
+function isCoachIntroTask(t: StopTask): boolean {
+  return t.label.trim().toLowerCase() === COACH_INTRO_TASK_LABEL;
 }
 
 export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: Stop }) {
@@ -22,11 +27,20 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
   const [welcomeBusy, setWelcomeBusy] = useState(false);
   const [welcomeMsg, setWelcomeMsg] = useState<string | null>(null);
 
+  const [coachDraft, setCoachDraft] = useState<{ taskId: string; candidateEmail: string; coachName: string; coachEmail: string } | null>(null);
+  const [coachBusy, setCoachBusy] = useState(false);
+  const [coachMsg, setCoachMsg] = useState<string | null>(null);
+
   const handleTaskClick = (t: StopTask) => {
     if (!canEdit) return;
     if (isWelcomeEmailTask(t) && !t.done) {
       setWelcomeDraft({ taskId: t.id, email: harvester.email || "", name: harvester.name });
       setWelcomeMsg(null);
+      return;
+    }
+    if (isCoachIntroTask(t) && !t.done) {
+      setCoachDraft({ taskId: t.id, candidateEmail: harvester.email || "", coachName: "Otman", coachEmail: "" });
+      setCoachMsg(null);
       return;
     }
     actions.toggleTask(harvester.id, stop.id, t.id);
@@ -58,6 +72,35 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
       setWelcomeMsg(e instanceof Error ? e.message : "Kon niet klaarzetten in Apollo.");
     } finally {
       setWelcomeBusy(false);
+    }
+  };
+
+  const submitCoachIntro = async () => {
+    if (!coachDraft) return;
+    const candidateEmail = coachDraft.candidateEmail.trim();
+    const coachName = coachDraft.coachName.trim();
+    const coachEmail = coachDraft.coachEmail.trim();
+    if (!candidateEmail || !coachName || !coachEmail) {
+      setCoachMsg("Vul e-mail kandidaat, naam coach en e-mail coach in.");
+      return;
+    }
+    setCoachBusy(true);
+    setCoachMsg(null);
+    try {
+      const res = await fetch("/api/apollo/coach-intro-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ harvesterId: harvester.id, candidateName: harvester.name, candidateEmail, coachName, coachEmail }),
+      });
+      const resBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resBody.error || "Onbekende fout.");
+      if (candidateEmail !== (harvester.email || "")) actions.setHarvesterEmail(harvester.id, candidateEmail);
+      actions.toggleTask(harvester.id, stop.id, coachDraft.taskId);
+      setCoachDraft(null);
+    } catch (e) {
+      setCoachMsg(e instanceof Error ? e.message : "Kon de mail niet versturen via Apollo.");
+    } finally {
+      setCoachBusy(false);
     }
   };
 
@@ -194,6 +237,50 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
                   {welcomeMsg && (
                     <p style={{ fontSize: "11px", margin: "8px 0 0", color: "var(--hv-danger)" }}>{welcomeMsg}</p>
                   )}
+                </div>
+              )}
+              {coachDraft && coachDraft.taskId === t.id && (
+                <div style={{ margin: "6px 0 10px 34px", padding: "12px", borderRadius: "8px", background: "var(--hv-cream-200)" }}>
+                  <p className="hv-label" style={{ color: "var(--hv-fg-muted)", margin: "0 0 8px" }}>
+                    Intake-mail naar kandidaat (aan) + coach (cc) — verstuurt direct via Apollo
+                  </p>
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "6px" }}
+                    value={coachDraft.candidateEmail}
+                    onChange={(e) => setCoachDraft({ ...coachDraft, candidateEmail: e.target.value })}
+                    placeholder="E-mailadres kandidaat"
+                  />
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "6px" }}
+                    value={coachDraft.coachName}
+                    onChange={(e) => setCoachDraft({ ...coachDraft, coachName: e.target.value })}
+                    placeholder="Naam coach"
+                  />
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "8px" }}
+                    value={coachDraft.coachEmail}
+                    onChange={(e) => setCoachDraft({ ...coachDraft, coachEmail: e.target.value })}
+                    placeholder="E-mailadres coach"
+                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button className="hv-btn hv-btn--sm" disabled={coachBusy} onClick={submitCoachIntro}>
+                      {coachBusy ? "Bezig…" : "Nu versturen & afvinken"}
+                    </button>
+                    <button
+                      className="hv-btn hv-btn--ghost hv-btn--sm"
+                      disabled={coachBusy}
+                      onClick={() => {
+                        setCoachDraft(null);
+                        setCoachMsg(null);
+                      }}
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+                  {coachMsg && <p style={{ fontSize: "11px", margin: "8px 0 0", color: "var(--hv-danger)" }}>{coachMsg}</p>}
                 </div>
               )}
             </div>
