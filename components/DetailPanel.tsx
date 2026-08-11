@@ -10,15 +10,15 @@ const COACH_INTRO_TASK_LABEL = "kennismaking met soft skill coach inplannen";
 const ONBOARDING_CONFIRMATION_TASK_LABEL = "versturen bevestiging onboarding";
 
 function isWelcomeEmailTask(t: StopTask): boolean {
-  return t.label.trim().toLowerCase() === WELCOME_EMAIL_TASK_LABEL;
+  return t.label.trim().toLowerCase().startsWith(WELCOME_EMAIL_TASK_LABEL);
 }
 
 function isCoachIntroTask(t: StopTask): boolean {
-  return t.label.trim().toLowerCase() === COACH_INTRO_TASK_LABEL;
+  return t.label.trim().toLowerCase().startsWith(COACH_INTRO_TASK_LABEL);
 }
 
 function isOnboardingConfirmationTask(t: StopTask): boolean {
-  return t.label.trim().toLowerCase() === ONBOARDING_CONFIRMATION_TASK_LABEL;
+  return t.label.trim().toLowerCase().startsWith(ONBOARDING_CONFIRMATION_TASK_LABEL);
 }
 
 export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: Stop }) {
