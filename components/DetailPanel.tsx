@@ -7,6 +7,7 @@ import type { Harvester, Stop, StopTask } from "@/lib/types";
 
 const WELCOME_EMAIL_TASK_LABEL = "versturen welkom-mail";
 const COACH_INTRO_TASK_LABEL = "kennismaking met soft skill coach inplannen";
+const ONBOARDING_CONFIRMATION_TASK_LABEL = "versturen bevestiging onboarding";
 
 function isWelcomeEmailTask(t: StopTask): boolean {
   return t.label.trim().toLowerCase() === WELCOME_EMAIL_TASK_LABEL;
@@ -14,6 +15,10 @@ function isWelcomeEmailTask(t: StopTask): boolean {
 
 function isCoachIntroTask(t: StopTask): boolean {
   return t.label.trim().toLowerCase() === COACH_INTRO_TASK_LABEL;
+}
+
+function isOnboardingConfirmationTask(t: StopTask): boolean {
+  return t.label.trim().toLowerCase() === ONBOARDING_CONFIRMATION_TASK_LABEL;
 }
 
 export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: Stop }) {
@@ -31,6 +36,10 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
   const [coachBusy, setCoachBusy] = useState(false);
   const [coachMsg, setCoachMsg] = useState<string | null>(null);
 
+  const [confirmDraft, setConfirmDraft] = useState<{ taskId: string; contactName: string; contactEmail: string; organizationName: string } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
+  const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
+
   const handleTaskClick = (t: StopTask) => {
     if (!canEdit) return;
     if (isWelcomeEmailTask(t) && !t.done) {
@@ -41,6 +50,11 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
     if (isCoachIntroTask(t) && !t.done) {
       setCoachDraft({ taskId: t.id, candidateEmail: harvester.email || "", coachName: "Otman", coachEmail: "" });
       setCoachMsg(null);
+      return;
+    }
+    if (isOnboardingConfirmationTask(t) && !t.done) {
+      setConfirmDraft({ taskId: t.id, contactName: "", contactEmail: "", organizationName: harvester.client || "" });
+      setConfirmMsg(null);
       return;
     }
     actions.toggleTask(harvester.id, stop.id, t.id);
@@ -101,6 +115,34 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
       setCoachMsg(e instanceof Error ? e.message : "Kon de mail niet versturen via Apollo.");
     } finally {
       setCoachBusy(false);
+    }
+  };
+
+  const submitOnboardingConfirmation = async () => {
+    if (!confirmDraft) return;
+    const contactName = confirmDraft.contactName.trim();
+    const contactEmail = confirmDraft.contactEmail.trim();
+    const organizationName = confirmDraft.organizationName.trim();
+    if (!contactName || !contactEmail) {
+      setConfirmMsg("Vul naam en e-mailadres van de contactpersoon in.");
+      return;
+    }
+    setConfirmBusy(true);
+    setConfirmMsg(null);
+    try {
+      const res = await fetch("/api/apollo/onboarding-confirmation-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ harvesterId: harvester.id, contactName, contactEmail, organizationName }),
+      });
+      const resBody = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resBody.error || "Onbekende fout.");
+      actions.toggleTask(harvester.id, stop.id, confirmDraft.taskId);
+      setConfirmDraft(null);
+    } catch (e) {
+      setConfirmMsg(e instanceof Error ? e.message : "Kon niet klaarzetten in Apollo.");
+    } finally {
+      setConfirmBusy(false);
     }
   };
 
@@ -281,6 +323,50 @@ export function DetailPanel({ harvester, stop }: { harvester: Harvester; stop: S
                     </button>
                   </div>
                   {coachMsg && <p style={{ fontSize: "11px", margin: "8px 0 0", color: "var(--hv-danger)" }}>{coachMsg}</p>}
+                </div>
+              )}
+              {confirmDraft && confirmDraft.taskId === t.id && (
+                <div style={{ margin: "6px 0 10px 34px", padding: "12px", borderRadius: "8px", background: "var(--hv-cream-200)" }}>
+                  <p className="hv-label" style={{ color: "var(--hv-fg-muted)", margin: "0 0 8px" }}>
+                    Bevestiging onboarding klaarzetten in Apollo — naar de contactpersoon bij de klant
+                  </p>
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "6px" }}
+                    value={confirmDraft.contactName}
+                    onChange={(e) => setConfirmDraft({ ...confirmDraft, contactName: e.target.value })}
+                    placeholder="Naam contactpersoon bij de klant"
+                  />
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "6px" }}
+                    value={confirmDraft.contactEmail}
+                    onChange={(e) => setConfirmDraft({ ...confirmDraft, contactEmail: e.target.value })}
+                    placeholder="E-mailadres contactpersoon"
+                  />
+                  <input
+                    className="hv-input"
+                    style={{ marginBottom: "8px" }}
+                    value={confirmDraft.organizationName}
+                    onChange={(e) => setConfirmDraft({ ...confirmDraft, organizationName: e.target.value })}
+                    placeholder="Naam organisatie (klant)"
+                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button className="hv-btn hv-btn--sm" disabled={confirmBusy} onClick={submitOnboardingConfirmation}>
+                      {confirmBusy ? "Bezig…" : "Klaarzetten in Apollo & afvinken"}
+                    </button>
+                    <button
+                      className="hv-btn hv-btn--ghost hv-btn--sm"
+                      disabled={confirmBusy}
+                      onClick={() => {
+                        setConfirmDraft(null);
+                        setConfirmMsg(null);
+                      }}
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+                  {confirmMsg && <p style={{ fontSize: "11px", margin: "8px 0 0", color: "var(--hv-danger)" }}>{confirmMsg}</p>}
                 </div>
               )}
             </div>
