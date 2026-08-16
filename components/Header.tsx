@@ -17,7 +17,9 @@ export function Header() {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
-  const navItems: [View, string][] = canEdit ? [...BASE_NAV_ITEMS, ["gebruikers", "Gebruikers"]] : BASE_NAV_ITEMS;
+  const navItems: [View, string][] = canEdit
+    ? [...BASE_NAV_ITEMS, ["verbeteringen", "Verbeteringen"], ["gebruikers", "Gebruikers"]]
+    : BASE_NAV_ITEMS;
 
   return (
     <header className="hv-header">

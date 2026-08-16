@@ -9,12 +9,14 @@ import { BeheerView } from "@/components/BeheerView";
 import { OrganisatieView } from "@/components/OrganisatieView";
 import { BookmarksView } from "@/components/BookmarksView";
 import { UsersView } from "@/components/UsersView";
+import { FeatureRequestsView } from "@/components/FeatureRequestsView";
 import { StopModal } from "@/components/StopModal";
 import { HarvesterModal } from "@/components/HarvesterModal";
 
 function AppShell() {
   const { state, me, canEdit } = useApp();
-  const view = state.view === "gebruikers" && !canEdit ? "reis" : state.view;
+  const view =
+    (state.view === "gebruikers" || state.view === "verbeteringen") && !canEdit ? "reis" : state.view;
 
   return (
     <div className="hv-app">
@@ -31,6 +33,7 @@ function AppShell() {
         {view === "beheer" && <BeheerView />}
         {view === "organisatie" && <OrganisatieView />}
         {view === "gebruikers" && me && <UsersView currentUserId={me.id} />}
+        {view === "verbeteringen" && <FeatureRequestsView />}
       </main>
       <StopModal />
       <HarvesterModal />

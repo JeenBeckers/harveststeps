@@ -1,4 +1,4 @@
-export type View = "reis" | "dashboard" | "beheer" | "organisatie" | "gebruikers" | "bookmarks";
+export type View = "reis" | "dashboard" | "beheer" | "organisatie" | "gebruikers" | "bookmarks" | "verbeteringen";
 
 export type Role = "viewer" | "editor" | "admin";
 
@@ -148,3 +148,59 @@ export type AppState = {
   modal: StopModalState;
   hmodal: HarvesterModalState;
 };
+
+export type FeatureRequestStatus =
+  | "concept"
+  | "ter_review"
+  | "aangevraagd"
+  | "bouwen"
+  | "in_review"
+  | "verborgen"
+  | "live"
+  | "uitgeschakeld";
+
+export type FeatureRequestSpec = {
+  title: string;
+  problem: string;
+  desiredOutcome: string;
+  inScope: string;
+  outOfScope: string;
+  area: string;
+  priority: string;
+};
+
+export type FeatureRequest = FeatureRequestSpec & {
+  id: number;
+  status: FeatureRequestStatus;
+  requestedByEmail: string;
+  reviewerEmail: string | null;
+  reviewComment: string | null;
+  githubIssueUrl: string | null;
+  prUrl: string | null;
+  previewUrl: string | null;
+  flagKey: string | null;
+  isLive: boolean;
+  liveToggledBy: string | null;
+  liveToggledAt: string | null;
+  rollbackReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FeatureRequestEvent = {
+  id: number;
+  featureRequestId: number;
+  event: string;
+  actorEmail: string;
+  detail: string | null;
+  createdAt: string;
+};
+
+export type RefineMessage = {
+  role: "user" | "assistant";
+  text: string;
+};
+
+export type RefineResult =
+  | { type: "question"; text: string }
+  | { type: "spec"; spec: FeatureRequestSpec };
