@@ -673,6 +673,17 @@ textarea {
   width: 100%;
   text-align: left;
 }
+.hv-sidenav__subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 12px;
+  margin-top: 2px;
+  border-left: 1px solid rgba(58, 77, 58, 0.15);
+}
+.hv-sidenav__item--sub {
+  font-size: 12.5px;
+}
 .hv-sidenav__meta {
   margin-top: auto;
   flex: none;

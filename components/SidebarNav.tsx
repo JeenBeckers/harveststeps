@@ -1,17 +1,31 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useApp } from "@/lib/store";
 import { initials } from "@/lib/logic";
-import { navItemsFor } from "@/lib/nav";
+import { navGroupsFor } from "@/lib/nav";
+import type { View } from "@/lib/types";
 import type { NavPreference } from "@/lib/useNavPreference";
 
 export function SidebarNav({ nav, iconToggle }: { nav: NavPreference; iconToggle: boolean }) {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
-  const navItems = navItemsFor(canEdit);
   const toggleLabel = nav.collapsed ? "Navigatie uitklappen" : "Navigatie inklappen";
+  const { primary, beheer } = navGroupsFor(canEdit);
+  const beheerActive = beheer.items.some(([key]) => key === state.view);
+  const [beheerOpen, setBeheerOpen] = useState(beheerActive);
+
+  useEffect(() => {
+    if (beheerActive) setBeheerOpen(true);
+  }, [beheerActive]);
+
+  const goTo = (key: View) => {
+    actions.setView(key);
+    // On narrow screens the bar covers the content, so step out of the way.
+    if (nav.overlay && !nav.collapsed) nav.toggle();
+  };
 
   return (
     <>
@@ -40,19 +54,37 @@ export function SidebarNav({ nav, iconToggle }: { nav: NavPreference; iconToggle
             <span className="hv-eyebrow hv-sidenav__section">Talentplanner · Post-master</span>
           </div>
           <nav className="hv-sidenav__nav">
-            {navItems.map(([key, label]) => (
+            {primary.map(([key, label]) => (
               <button
                 key={key}
                 className={`hv-btn--pill-toggle hv-sidenav__item${state.view === key ? " is-active" : ""}`}
-                onClick={() => {
-                  actions.setView(key);
-                  // On narrow screens the bar covers the content, so step out of the way.
-                  if (nav.overlay && !nav.collapsed) nav.toggle();
-                }}
+                onClick={() => goTo(key)}
               >
                 {label}
               </button>
             ))}
+            <button
+              type="button"
+              className={`hv-btn--pill-toggle hv-sidenav__item${beheerActive ? " is-active" : ""}`}
+              aria-expanded={beheerOpen}
+              aria-controls="hv-sidenav-beheer"
+              onClick={() => setBeheerOpen((open) => !open)}
+            >
+              {beheer.label}
+            </button>
+            {beheerOpen && (
+              <div className="hv-sidenav__subnav" id="hv-sidenav-beheer">
+                {beheer.items.map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={`hv-btn--pill-toggle hv-sidenav__item hv-sidenav__item--sub${state.view === key ? " is-active" : ""}`}
+                    onClick={() => goTo(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </nav>
           <div className="hv-sidenav__meta">
             <span className="hv-eyebrow hv-sidenav__metatext">{activeJourneys} actieve reizen</span>
