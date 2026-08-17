@@ -39,6 +39,7 @@ function eventLabel(e: FeatureRequestEvent): string {
 export function FeatureRequestsView() {
   const { me, canEdit, isAdmin } = useApp();
   const [requests, setRequests] = useState<FeatureRequest[] | null>(null);
+  const [imageUploadEnabled, setImageUploadEnabled] = useState(false);
   const [users, setUsers] = useState<ApiUser[]>([]);
   const [error, setError] = useState("");
   const [showNew, setShowNew] = useState(false);
@@ -69,7 +70,10 @@ export function FeatureRequestsView() {
   const load = () => {
     fetch("/api/feature-requests")
       .then((r) => r.json())
-      .then((data) => setRequests(Array.isArray(data.requests) ? data.requests : []))
+      .then((data) => {
+        setRequests(Array.isArray(data.requests) ? data.requests : []);
+        setImageUploadEnabled(Boolean(data.imageUploadEnabled));
+      })
       .catch(() => setError("Kon verzoeken niet laden."));
   };
 
@@ -320,6 +324,23 @@ export function FeatureRequestsView() {
               </div>
               {isExpanded && (
                 <div style={{ margin: "4px 0 12px", padding: "12px 16px", borderRadius: "8px", background: "var(--hv-cream-200)" }}>
+                  {imageUploadEnabled && r.hasImage && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/api/feature-requests/${r.id}/image`}
+                        alt={`Afbeelding bij ${r.title}`}
+                        style={{
+                          display: "block",
+                          maxWidth: "100%",
+                          maxHeight: "320px",
+                          borderRadius: "var(--hv-r-md)",
+                          border: "1px solid var(--hv-border)",
+                          marginBottom: "12px",
+                        }}
+                      />
+                    </>
+                  )}
                   {eventsLoading === r.id && <p style={{ fontSize: "11px", color: "var(--hv-fg-muted)" }}>Laden...</p>}
                   {eventsLoading !== r.id && (eventsByRequest[r.id]?.length ?? 0) === 0 && (
                     <p style={{ fontSize: "11px", color: "var(--hv-fg-muted)", fontStyle: "italic" }}>Nog geen voortgang geregistreerd.</p>
@@ -372,7 +393,13 @@ export function FeatureRequestsView() {
           })}
         </div>
       </div>
-      {showNew && <NewFeatureRequestModal onClose={() => setShowNew(false)} onCreated={load} />}
+      {showNew && (
+        <NewFeatureRequestModal
+          onClose={() => setShowNew(false)}
+          onCreated={load}
+          imageUploadEnabled={imageUploadEnabled}
+        />
+      )}
     </section>
   );
 }

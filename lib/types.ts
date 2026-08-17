@@ -184,6 +184,7 @@ export type FeatureRequest = FeatureRequestSpec & {
   liveToggledBy: string | null;
   liveToggledAt: string | null;
   rollbackReason: string | null;
+  hasImage: boolean;
   createdAt: string;
   updatedAt: string;
 };

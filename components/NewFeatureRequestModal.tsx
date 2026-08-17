@@ -1,16 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FeatureRequestSpec, RefineMessage } from "@/lib/types";
+import {
+  ALLOWED_IMAGE_MIME_TYPES,
+  IMAGE_ACCEPT,
+  IMAGE_SIZE_ERROR,
+  IMAGE_TYPE_ERROR,
+  MAX_IMAGE_BYTES,
+} from "@/lib/featureRequestImage";
 
 const PRIORITIES = ["laag", "middel", "hoog"];
 
-export function NewFeatureRequestModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+export function NewFeatureRequestModal({
+  onClose,
+  onCreated,
+  imageUploadEnabled = false,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+  imageUploadEnabled?: boolean;
+}) {
   const [messages, setMessages] = useState<RefineMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [spec, setSpec] = useState<FeatureRequestSpec | null>(null);
+  const [image, setImage] = useState<File | null>(null);
+
+  const imagePreview = useMemo(() => (image ? URL.createObjectURL(image) : null), [image]);
+  useEffect(() => {
+    if (!imagePreview) return;
+    return () => URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
+
+  const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (!file) return;
+    if (!(ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(file.type)) {
+      setImage(null);
+      setError(IMAGE_TYPE_ERROR);
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImage(null);
+      setError(IMAGE_SIZE_ERROR);
+      return;
+    }
+    setError("");
+    setImage(file);
+  };
 
   const send = async () => {
     const text = draft.trim();
@@ -45,11 +85,19 @@ export function NewFeatureRequestModal({ onClose, onCreated }: { onClose: () => 
     setBusy(true);
     setError("");
     try {
-      const res = await fetch("/api/feature-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spec }),
-      });
+      let res: Response;
+      if (imageUploadEnabled && image) {
+        const form = new FormData();
+        form.append("spec", JSON.stringify(spec));
+        form.append("image", image);
+        res = await fetch("/api/feature-requests", { method: "POST", body: form });
+      } else {
+        res = await fetch("/api/feature-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spec }),
+        });
+      }
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Onbekende fout.");
       onCreated();
@@ -135,7 +183,7 @@ export function NewFeatureRequestModal({ onClose, onCreated }: { onClose: () => 
               <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>Onderdeel van de app</p>
               <input className="hv-input hv-field" value={spec.area} onChange={(e) => setSpec({ ...spec, area: e.target.value })} />
               <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>Prioriteit</p>
-              <div className="hv-pill-choices" style={{ marginBottom: "8px" }}>
+              <div className="hv-pill-choices" style={{ marginBottom: imageUploadEnabled ? "18px" : "8px" }}>
                 {PRIORITIES.map((p) => (
                   <button
                     key={p}
@@ -146,6 +194,39 @@ export function NewFeatureRequestModal({ onClose, onCreated }: { onClose: () => 
                   </button>
                 ))}
               </div>
+              {imageUploadEnabled && (
+                <>
+                  <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>
+                    Afbeelding (optioneel)
+                  </p>
+                  <p style={{ fontSize: "11px", color: "var(--hv-fg-subtle)", margin: "0 0 8px" }}>
+                    Eén screenshot of wireframe — jpg, jpeg, png of gif, maximaal 5 MB.
+                  </p>
+                  <input type="file" accept={IMAGE_ACCEPT} onChange={pickImage} style={{ fontSize: "12px" }} />
+                  {image && imagePreview && (
+                    <div style={{ marginTop: "10px" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={imagePreview}
+                        alt={`Voorbeeld van ${image.name}`}
+                        style={{
+                          display: "block",
+                          maxWidth: "100%",
+                          maxHeight: "180px",
+                          borderRadius: "var(--hv-r-md)",
+                          border: "1px solid var(--hv-border)",
+                        }}
+                      />
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "6px" }}>
+                        <span style={{ fontSize: "11px", color: "var(--hv-fg-subtle)" }}>{image.name}</span>
+                        <button className="hv-btn hv-btn--ghost hv-btn--sm" onClick={() => setImage(null)}>
+                          Verwijderen
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </>
           )}
 
