@@ -1,0 +1,125 @@
+# Triggered by a "harvest-steps-request" labeled issue, created from the app's
+# Verbeteringen flow. Runs Claude Code headless to implement the confirmed spec
+# behind a feature flag, then reports status back to HarvestSteps.
+#
+# NOTE: verify `anthropics/claude-code-action`'s current inputs against its README
+# before relying on this — the action's interface has changed across versions and
+# this was authored without being able to browse its live docs.
+#
+# Required repo secrets (add these yourself — never committed here):
+#   ANTHROPIC_API_KEY            — used by claude-code-action
+#   FEATURE_REQUEST_STATUS_URL   — e.g. https://harveststeps.vercel.app/api/feature-requests
+#   FEATURE_REQUEST_CALLBACK_SECRET — must match the same env var in Vercel
+
+name: Feature request build
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  build:
+    if: github.event.label.name == 'harvest-steps-request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      pr_url: ${{ steps.claude.outputs.pr_url }}
+    steps:
+      - name: Extract feature request id
+        id: fr
+        run: |
+          ID=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
+          FLAG=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=flag-key: )[a-z0-9-]+' | head -1)
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "flag=$FLAG" >> "$GITHUB_OUTPUT"
+
+      - name: Report status - building
+        if: steps.fr.outputs.id != ''
+        run: |
+          curl -sf -X POST "${{ secrets.FEATURE_REQUEST_STATUS_URL }}/${{ steps.fr.outputs.id }}/status" \
+            -H "x-callback-secret: ${{ secrets.FEATURE_REQUEST_CALLBACK_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"status":"bouwen"}' || true
+
+      - uses: actions/checkout@v4
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          allowed_tools: "Read,Write,Edit,Bash(npx tsc --noEmit),Bash(npx eslint*),Bash(npx next build),Bash(git*),Bash(gh*)"
+          prompt: |
+            Implement the feature request described in this issue (#${{ github.event.issue.number }}):
+
+            ${{ github.event.issue.body }}
+
+            Rules:
+            - Read CLAUDE.md/AGENTS.md and follow existing code conventions in this repo.
+            - Stay strictly within "In scope" / "Out of scope" as written above. If the request
+              turns out to be too large or ambiguous to implement safely in one pass, STOP,
+              do not guess, and instead open the PR with only a comment explaining what's blocking
+              it and what a smaller follow-up request should look like.
+            - Gate the new behavior behind `await isFeatureLive("${{ steps.fr.outputs.flag }}")`
+              from lib/flags.ts, so it ships invisible until manually flipped on. If the change
+              is not something that can be meaningfully hidden behind a flag (e.g. a pure bugfix),
+              say so explicitly in the PR description instead of forcing an awkward flag.
+            - Run `npx tsc --noEmit` and fix any errors before finishing.
+            - Run a security-review pass on your own diff (common web vulnerabilities, secret/
+              env var handling, injection risks). If you find anything, list it plainly in the
+              PR description under a "Security findings" heading — do not silently fix and hide
+              a serious finding, surface it so a human reviews before merge.
+            - Create a branch, commit, and open a pull request against main with a clear summary
+              of what changed and why, and a "Security findings: none" or itemized list line.
+
+      - name: Report status - in review
+        if: steps.fr.outputs.id != ''
+        run: |
+          curl -sf -X POST "${{ secrets.FEATURE_REQUEST_STATUS_URL }}/${{ steps.fr.outputs.id }}/status" \
+            -H "x-callback-secret: ${{ secrets.FEATURE_REQUEST_CALLBACK_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"status\":\"in_review\",\"prUrl\":\"${{ steps.claude.outputs.pr_url }}\"}" || true
+
+  auto_merge:
+    needs: build
+    if: github.event.label.name == 'harvest-steps-request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract feature request id
+        id: fr
+        run: |
+          ID=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+
+      - name: Merge if the PR has no security findings, then report status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_URL="${{ needs.build.outputs.pr_url }}"
+          if [ -z "$PR_URL" ]; then
+            echo "No PR was opened; nothing to merge."
+            exit 0
+          fi
+          BODY=$(gh pr view "$PR_URL" --json body -q .body)
+          if echo "$BODY" | grep -qi "Security findings: none"; then
+            # No branch-protection required checks on this repo, so a direct merge (not --auto)
+            # is immediate and lets us report the resulting status right after.
+            gh pr merge "$PR_URL" --squash
+            if [ -n "${{ steps.fr.outputs.id }}" ]; then
+              curl -sf -X POST "${{ secrets.FEATURE_REQUEST_STATUS_URL }}/${{ steps.fr.outputs.id }}/status" \
+                -H "x-callback-secret: ${{ secrets.FEATURE_REQUEST_CALLBACK_SECRET }}" \
+                -H "Content-Type: application/json" \
+                -d '{"status":"verborgen"}' || true
+            fi
+          else
+            echo "PR has security findings or unclear status — leaving open for human review."
+          fi

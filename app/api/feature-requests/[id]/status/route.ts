@@ -1,6 +1,14 @@
+import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { getFeatureRequestById, updateFeatureRequestStatus } from "@/lib/db";
 import type { FeatureRequestStatus } from "@/lib/types";
+
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 const VALID_STATUSES: FeatureRequestStatus[] = [
   "concept",
@@ -19,7 +27,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!secret) {
     return NextResponse.json({ error: "FEATURE_REQUEST_CALLBACK_SECRET is niet ingesteld." }, { status: 500 });
   }
-  if (request.headers.get("x-callback-secret") !== secret) {
+  const provided = request.headers.get("x-callback-secret") || "";
+  if (!safeEqual(provided, secret)) {
     return NextResponse.json({ error: "Ongeldig secret." }, { status: 401 });
   }
 
