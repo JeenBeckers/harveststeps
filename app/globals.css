@@ -632,6 +632,10 @@ textarea {
   align-self: center;
   padding: 20px 0;
 }
+/* The vertical text only existed to fit the long word; chevrons must stay upright to point sideways. */
+.hv-app--sidenav.is-collapsed .hv-sidenav__toggle--icon {
+  writing-mode: horizontal-tb;
+}
 .hv-sidenav__body {
   flex: 1;
   min-height: 0;
