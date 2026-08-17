@@ -1,16 +1,63 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FeatureRequestSpec, RefineMessage } from "@/lib/types";
+import { IMAGE_ACCEPT, validateImageFile } from "@/lib/featureRequestImage";
 
 const PRIORITIES = ["laag", "middel", "hoog"];
 
-export function NewFeatureRequestModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function buildFormData(spec: FeatureRequestSpec, image: File): FormData {
+  const form = new FormData();
+  form.append("spec", JSON.stringify(spec));
+  form.append("image", image);
+  return form;
+}
+
+export function NewFeatureRequestModal({
+  onClose,
+  onCreated,
+  imageUploadEnabled = false,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+  imageUploadEnabled?: boolean;
+}) {
   const [messages, setMessages] = useState<RefineMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [spec, setSpec] = useState<FeatureRequestSpec | null>(null);
+  const [image, setImage] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [imageError, setImageError] = useState("");
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  /** Ruimt de vorige preview-URL op zodra er een andere (of geen) afbeelding is gekozen. */
+  useEffect(() => {
+    if (!image) return;
+    return () => URL.revokeObjectURL(image.previewUrl);
+  }, [image]);
+
+  const pickImage = (file: File | null) => {
+    setImageError("");
+    if (!file) {
+      setImage(null);
+      return;
+    }
+    const problem = validateImageFile(file);
+    if (problem) {
+      setImage(null);
+      setImageError(problem);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+      return;
+    }
+    setImage({ file, previewUrl: URL.createObjectURL(file) });
+  };
+
+  const clearImage = () => {
+    setImage(null);
+    setImageError("");
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  };
 
   const send = async () => {
     const text = draft.trim();
@@ -47,8 +94,9 @@ export function NewFeatureRequestModal({ onClose, onCreated }: { onClose: () => 
     try {
       const res = await fetch("/api/feature-requests", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spec }),
+        ...(imageUploadEnabled && image
+          ? { body: buildFormData(spec, image.file) }
+          : { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spec }) }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "Onbekende fout.");
@@ -146,6 +194,39 @@ export function NewFeatureRequestModal({ onClose, onCreated }: { onClose: () => 
                   </button>
                 ))}
               </div>
+              {imageUploadEnabled && (
+                <>
+                  <p className="hv-label hv-field--tight" style={{ color: "var(--hv-fg-muted)" }}>
+                    Afbeelding (optioneel)
+                  </p>
+                  <p style={{ fontSize: "11px", color: "var(--hv-fg-subtle)", margin: "0 0 8px" }}>
+                    Eén screenshot of wireframe — jpg, jpeg, png of gif, maximaal 5 MB.
+                  </p>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    className="hv-input"
+                    accept={IMAGE_ACCEPT}
+                    style={{ marginBottom: "8px", padding: "7px 12px" }}
+                    onChange={(e) => pickImage(e.target.files?.[0] ?? null)}
+                  />
+                  {image && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={image.previewUrl}
+                        alt={image.file.name}
+                        style={{ maxWidth: "120px", maxHeight: "80px", borderRadius: "var(--hv-r-sm)", border: "1px solid var(--hv-border)" }}
+                      />
+                      <span style={{ fontSize: "11px", color: "var(--hv-fg-muted)", flex: 1, wordBreak: "break-all" }}>{image.file.name}</span>
+                      <button className="hv-icon-btn" onClick={clearImage} aria-label="Afbeelding verwijderen">
+                        ×
+                      </button>
+                    </div>
+                  )}
+                  {imageError && <p style={{ fontSize: "11px", color: "var(--hv-danger)", marginBottom: "8px" }}>{imageError}</p>}
+                </>
+              )}
             </>
           )}
 

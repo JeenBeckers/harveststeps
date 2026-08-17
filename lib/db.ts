@@ -5,6 +5,12 @@ import type { FeatureRequest, FeatureRequestEvent, FeatureRequestSpec, FeatureRe
 
 export type Role = "viewer" | "editor" | "admin";
 
+export type FeatureRequestImage = {
+  mimeType: string;
+  /** De afbeelding als base64; bytea-parameters worden niet ondersteund via de Neon HTTP-driver. */
+  dataBase64: string;
+};
+
 export type DbUser = {
   id: number;
   email: string;
@@ -68,6 +74,14 @@ export async function ensureSchema(): Promise<void> {
       rollback_reason text,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS feature_request_images (
+      feature_request_id integer PRIMARY KEY REFERENCES feature_requests(id) ON DELETE CASCADE,
+      mime_type varchar(40) NOT NULL,
+      data_base64 text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
     )
   `;
   await sql`
@@ -233,7 +247,11 @@ function slugify(title: string): string {
     .slice(0, 50);
 }
 
-export async function createFeatureRequest(spec: FeatureRequestSpec, requestedByEmail: string): Promise<FeatureRequest> {
+export async function createFeatureRequest(
+  spec: FeatureRequestSpec,
+  requestedByEmail: string,
+  image: FeatureRequestImage | null = null
+): Promise<FeatureRequest> {
   await ensureSchema();
   const sql = getSql();
   const flagKey = `${slugify(spec.title)}-${Date.now().toString(36)}`;
@@ -244,21 +262,38 @@ export async function createFeatureRequest(spec: FeatureRequestSpec, requestedBy
       (${spec.title}, ${spec.problem}, ${spec.desiredOutcome}, ${spec.inScope}, ${spec.outOfScope}, ${spec.area}, ${spec.priority}, 'concept', ${requestedByEmail}, ${flagKey})
     RETURNING *
   `;
-  await addFeatureRequestEvent(rows[0].id as number, "created", requestedByEmail, null);
-  return rowToFeatureRequest(rows[0]);
+  const id = rows[0].id as number;
+  if (image) {
+    await sql`
+      INSERT INTO feature_request_images (feature_request_id, mime_type, data_base64)
+      VALUES (${id}, ${image.mimeType}, ${image.dataBase64})
+    `;
+  }
+  await addFeatureRequestEvent(id, "created", requestedByEmail, null);
+  return rowToFeatureRequest({ ...rows[0], has_image: Boolean(image) });
 }
 
 export async function listFeatureRequests(): Promise<FeatureRequest[]> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT * FROM feature_requests ORDER BY created_at DESC`;
+  const rows = await sql`
+    SELECT f.*, (i.feature_request_id IS NOT NULL) AS has_image
+    FROM feature_requests f
+    LEFT JOIN feature_request_images i ON i.feature_request_id = f.id
+    ORDER BY f.created_at DESC
+  `;
   return rows.map(rowToFeatureRequest);
 }
 
 export async function getFeatureRequestById(id: number): Promise<FeatureRequest | null> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT * FROM feature_requests WHERE id = ${id}`;
+  const rows = await sql`
+    SELECT f.*, (i.feature_request_id IS NOT NULL) AS has_image
+    FROM feature_requests f
+    LEFT JOIN feature_request_images i ON i.feature_request_id = f.id
+    WHERE f.id = ${id}
+  `;
   if (rows.length === 0) return null;
   return rowToFeatureRequest(rows[0]);
 }
@@ -344,6 +379,16 @@ export async function getFeatureFlag(flagKey: string): Promise<boolean> {
   return Boolean(rows[0].is_live);
 }
 
+export async function getFeatureRequestImage(id: number): Promise<FeatureRequestImage | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`
+    SELECT mime_type, data_base64 FROM feature_request_images WHERE feature_request_id = ${id}
+  `;
+  if (rows.length === 0) return null;
+  return { mimeType: rows[0].mime_type as string, dataBase64: rows[0].data_base64 as string };
+}
+
 export async function listFeatureRequestEvents(id: number): Promise<FeatureRequestEvent[]> {
   await ensureSchema();
   const sql = getSql();
@@ -395,6 +440,7 @@ function rowToFeatureRequest(r: Record<string, unknown>): FeatureRequest {
     liveToggledBy: (r.live_toggled_by as string) ?? null,
     liveToggledAt: (r.live_toggled_at as string) ?? null,
     rollbackReason: (r.rollback_reason as string) ?? null,
+    hasImage: Boolean(r.has_image),
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
