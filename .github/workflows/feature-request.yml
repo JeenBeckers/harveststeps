@@ -2,9 +2,11 @@
 # Verbeteringen flow. Runs Claude Code headless to implement the confirmed spec
 # behind a feature flag, then reports status back to HarvestSteps.
 #
-# NOTE: verify `anthropics/claude-code-action`'s current inputs against its README
-# before relying on this — the action's interface has changed across versions and
-# this was authored without being able to browse its live docs.
+# Verified against anthropics/claude-code-action's actual action.yml on 2026-08-17
+# (first version of this file guessed a `pr_url` output that doesn't exist and never
+# actually opened a PR — the action does NOT create PRs on its own; real outputs are
+# `branch_name` and `conclusion`, and PR creation must be an explicit instruction that
+# Claude Code itself executes via the `gh` CLI).
 #
 # Required repo secrets (add these yourself — never committed here):
 #   ANTHROPIC_API_KEY            — used by claude-code-action
@@ -26,7 +28,7 @@ jobs:
       pull-requests: write
       issues: write
     outputs:
-      pr_url: ${{ steps.claude.outputs.pr_url }}
+      branch_name: ${{ steps.claude.outputs.branch_name }}
     steps:
       - name: Extract feature request id
         id: fr
@@ -49,44 +51,53 @@ jobs:
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          allowed_tools: "Read,Write,Edit,Bash(npx tsc --noEmit),Bash(npx eslint*),Bash(npx next build),Bash(git*),Bash(gh*)"
           prompt: |
-            Implement the feature request described in this issue (#${{ github.event.issue.number }}):
+            Implement the feature request described in issue #${{ github.event.issue.number }}:
 
             ${{ github.event.issue.body }}
 
             Rules:
             - Read CLAUDE.md/AGENTS.md and follow existing code conventions in this repo.
-            - Stay strictly within "In scope" / "Out of scope" as written above. If the request
-              turns out to be too large or ambiguous to implement safely in one pass, STOP,
-              do not guess, and instead open the PR with only a comment explaining what's blocking
-              it and what a smaller follow-up request should look like.
+            - Stay strictly within "In scope" / "Out of scope" as written above.
             - Gate the new behavior behind `await isFeatureLive("${{ steps.fr.outputs.flag }}")`
-              from lib/flags.ts, so it ships invisible until manually flipped on. If the change
-              is not something that can be meaningfully hidden behind a flag (e.g. a pure bugfix),
-              say so explicitly in the PR description instead of forcing an awkward flag.
+              from lib/flags.ts, unless the change genuinely can't be meaningfully hidden behind
+              a flag (e.g. a pure bugfix) — say so explicitly in the PR description instead of
+              forcing an awkward flag.
             - Run `npx tsc --noEmit` and fix any errors before finishing.
             - Run a security-review pass on your own diff (common web vulnerabilities, secret/
-              env var handling, injection risks). If you find anything, list it plainly in the
-              PR description under a "Security findings" heading — do not silently fix and hide
-              a serious finding, surface it so a human reviews before merge.
-            - Create a branch, commit, and open a pull request against main with a clear summary
-              of what changed and why, and a "Security findings: none" or itemized list line.
+              env var handling, injection risks). Put a line reading exactly
+              "Security findings: none" in the PR description if clean, or a "Security findings:"
+              heading with an itemized list if not — do not silently fix and hide a serious finding.
+            - You must actually run these yourself via the Bash tool — do not just describe them:
+                git checkout -b <short kebab-case branch name>
+                git add -A
+                git commit -m "<summary>"
+                git push -u origin <branch name>
+                gh pr create --base main --title "<title>" --body "<description including the Security findings line>"
+            - If the request is too large or ambiguous to implement safely in one pass: do NOT
+              guess. Instead run
+                gh issue comment ${{ github.event.issue.number }} --body "<what's blocking it and what a smaller follow-up request should look like>"
+              and stop without creating a branch, commit, or PR.
 
       - name: Report status - in review
-        if: steps.fr.outputs.id != ''
+        if: steps.fr.outputs.id != '' && steps.claude.outputs.branch_name != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          PR_URL=$(gh pr list --head "${{ steps.claude.outputs.branch_name }}" --json url -q '.[0].url' || echo "")
           curl -sf -X POST "${{ secrets.FEATURE_REQUEST_STATUS_URL }}/${{ steps.fr.outputs.id }}/status" \
             -H "x-callback-secret: ${{ secrets.FEATURE_REQUEST_CALLBACK_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d "{\"status\":\"in_review\",\"prUrl\":\"${{ steps.claude.outputs.pr_url }}\"}" || true
+            -d "{\"status\":\"in_review\",\"prUrl\":\"$PR_URL\"}" || true
 
   auto_merge:
     needs: build
-    if: github.event.label.name == 'harvest-steps-request'
+    if: github.event.label.name == 'harvest-steps-request' && needs.build.outputs.branch_name != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -104,9 +115,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_URL="${{ needs.build.outputs.pr_url }}"
+          PR_URL=$(gh pr list --head "${{ needs.build.outputs.branch_name }}" --json url -q '.[0].url' || echo "")
           if [ -z "$PR_URL" ]; then
-            echo "No PR was opened; nothing to merge."
+            echo "No PR found for branch ${{ needs.build.outputs.branch_name }}; nothing to merge."
             exit 0
           fi
           BODY=$(gh pr view "$PR_URL" --json body -q .body)
