@@ -66,10 +66,14 @@ export async function ensureSchema(): Promise<void> {
       live_toggled_by varchar(255),
       live_toggled_at timestamptz,
       rollback_reason text,
+      image_base64 text,
+      image_mime varchar(50),
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now()
     )
   `;
+  await sql`ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS image_base64 text`;
+  await sql`ALTER TABLE feature_requests ADD COLUMN IF NOT EXISTS image_mime varchar(50)`;
   await sql`
     CREATE TABLE IF NOT EXISTS feature_request_events (
       id serial PRIMARY KEY,
@@ -233,16 +237,28 @@ function slugify(title: string): string {
     .slice(0, 50);
 }
 
-export async function createFeatureRequest(spec: FeatureRequestSpec, requestedByEmail: string): Promise<FeatureRequest> {
+export type FeatureRequestImage = {
+  base64: string;
+  mime: string;
+};
+
+export async function createFeatureRequest(
+  spec: FeatureRequestSpec,
+  requestedByEmail: string,
+  image: FeatureRequestImage | null = null
+): Promise<FeatureRequest> {
   await ensureSchema();
   const sql = getSql();
   const flagKey = `${slugify(spec.title)}-${Date.now().toString(36)}`;
   const rows = await sql`
     INSERT INTO feature_requests
-      (title, problem, desired_outcome, in_scope, out_of_scope, area, priority, status, requested_by_email, flag_key)
+      (title, problem, desired_outcome, in_scope, out_of_scope, area, priority, status, requested_by_email, flag_key, image_base64, image_mime)
     VALUES
-      (${spec.title}, ${spec.problem}, ${spec.desiredOutcome}, ${spec.inScope}, ${spec.outOfScope}, ${spec.area}, ${spec.priority}, 'concept', ${requestedByEmail}, ${flagKey})
-    RETURNING *
+      (${spec.title}, ${spec.problem}, ${spec.desiredOutcome}, ${spec.inScope}, ${spec.outOfScope}, ${spec.area}, ${spec.priority}, 'concept', ${requestedByEmail}, ${flagKey}, ${image?.base64 ?? null}, ${image?.mime ?? null})
+    RETURNING id, title, problem, desired_outcome, in_scope, out_of_scope, area, priority, status,
+              requested_by_email, reviewer_email, review_comment, github_issue_url, pr_url, preview_url,
+              flag_key, is_live, live_toggled_by, live_toggled_at, rollback_reason,
+              (image_base64 IS NOT NULL) AS has_image, created_at, updated_at
   `;
   await addFeatureRequestEvent(rows[0].id as number, "created", requestedByEmail, null);
   return rowToFeatureRequest(rows[0]);
@@ -251,16 +267,40 @@ export async function createFeatureRequest(spec: FeatureRequestSpec, requestedBy
 export async function listFeatureRequests(): Promise<FeatureRequest[]> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT * FROM feature_requests ORDER BY created_at DESC`;
+  // image_base64 wordt bewust niet meegeladen — de lijst wordt gepolld en de bytes horen bij /image.
+  const rows = await sql`
+    SELECT id, title, problem, desired_outcome, in_scope, out_of_scope, area, priority, status,
+           requested_by_email, reviewer_email, review_comment, github_issue_url, pr_url, preview_url,
+           flag_key, is_live, live_toggled_by, live_toggled_at, rollback_reason,
+           (image_base64 IS NOT NULL) AS has_image, created_at, updated_at
+    FROM feature_requests ORDER BY created_at DESC
+  `;
   return rows.map(rowToFeatureRequest);
 }
 
 export async function getFeatureRequestById(id: number): Promise<FeatureRequest | null> {
   await ensureSchema();
   const sql = getSql();
-  const rows = await sql`SELECT * FROM feature_requests WHERE id = ${id}`;
+  const rows = await sql`
+    SELECT id, title, problem, desired_outcome, in_scope, out_of_scope, area, priority, status,
+           requested_by_email, reviewer_email, review_comment, github_issue_url, pr_url, preview_url,
+           flag_key, is_live, live_toggled_by, live_toggled_at, rollback_reason,
+           (image_base64 IS NOT NULL) AS has_image, created_at, updated_at
+    FROM feature_requests WHERE id = ${id}
+  `;
   if (rows.length === 0) return null;
   return rowToFeatureRequest(rows[0]);
+}
+
+export async function getFeatureRequestImage(id: number): Promise<FeatureRequestImage | null> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT image_base64, image_mime FROM feature_requests WHERE id = ${id}`;
+  if (rows.length === 0) return null;
+  const base64 = rows[0].image_base64 as string | null;
+  const mime = rows[0].image_mime as string | null;
+  if (!base64 || !mime) return null;
+  return { base64, mime };
 }
 
 export async function requestFeatureReview(id: number, reviewerEmail: string, actorEmail: string): Promise<void> {
@@ -395,6 +435,7 @@ function rowToFeatureRequest(r: Record<string, unknown>): FeatureRequest {
     liveToggledBy: (r.live_toggled_by as string) ?? null,
     liveToggledAt: (r.live_toggled_at as string) ?? null,
     rollbackReason: (r.rollback_reason as string) ?? null,
+    hasImage: Boolean(r.has_image),
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
