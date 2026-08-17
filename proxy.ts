@@ -8,6 +8,9 @@ export async function proxy(request: NextRequest) {
   const isApi = pathname.startsWith("/api/");
   const isAuthApi = pathname.startsWith("/api/auth/");
   const isLoginPage = pathname === "/login";
+  // Called by the feature-request GitHub Actions workflow, not a logged-in browser
+  // session — it authenticates itself via the x-callback-secret header instead.
+  const isFeatureRequestStatusCallback = /^\/api\/feature-requests\/\d+\/status$/.test(pathname);
 
   const token = request.cookies.get(SESSION_COOKIE)?.value;
   const user = token ? await verifySessionToken(token) : null;
@@ -17,7 +20,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (isAuthApi) {
+  if (isAuthApi || isFeatureRequestStatusCallback) {
     return NextResponse.next();
   }
 
