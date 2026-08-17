@@ -12,16 +12,18 @@ export function SidebarNav({
   nav,
   iconToggle,
   bookmarksUnderBeheer,
+  bookmarksInBeheer,
 }: {
   nav: NavPreference;
   iconToggle: boolean;
   bookmarksUnderBeheer: boolean;
+  bookmarksInBeheer: boolean;
 }) {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
   const toggleLabel = nav.collapsed ? "Navigatie uitklappen" : "Navigatie inklappen";
-  const { primary, beheer, trailing } = navGroupsFor(canEdit, bookmarksUnderBeheer);
+  const { primary, beheer, trailing } = navGroupsFor(canEdit, { bookmarksUnderBeheer, bookmarksInBeheer });
   const beheerActive = beheer.items.some(([key]) => key === state.view);
   const [beheerOpen, setBeheerOpen] = useState(beheerActive);
 

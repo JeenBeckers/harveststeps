@@ -19,10 +19,12 @@ export function AppShell({
   sidebarNav,
   navToggleIcon,
   bookmarksUnderBeheer,
+  bookmarksInBeheer,
 }: {
   sidebarNav: boolean;
   navToggleIcon: boolean;
   bookmarksUnderBeheer: boolean;
+  bookmarksInBeheer: boolean;
 }) {
   const { state, me, canEdit } = useApp();
   const nav = useNavPreference(sidebarNav);
@@ -43,7 +45,12 @@ export function AppShell({
     <div className={shellClass}>
       {sidebarNav ? (
         <>
-          <SidebarNav nav={nav} iconToggle={navToggleIcon} bookmarksUnderBeheer={bookmarksUnderBeheer} />
+          <SidebarNav
+            nav={nav}
+            iconToggle={navToggleIcon}
+            bookmarksUnderBeheer={bookmarksUnderBeheer}
+            bookmarksInBeheer={bookmarksInBeheer}
+          />
           <div className="hv-sidenav__spacer" aria-hidden="true" />
         </>
       ) : (
