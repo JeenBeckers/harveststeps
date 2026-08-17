@@ -14,6 +14,14 @@
 # gh, npx) requires explicit `--allowedTools "Bash"` via claude_args, or every git/gh
 # command it tries gets silently denied while the step still reports success.
 #
+# Third bug, found right after fixing the second: `steps.claude.outputs.branch_name`
+# is populated by claude-code-action's own automatic branch-creation flow, which we
+# never use — the prompt below tells Claude to run `git checkout -b`/`push`/`gh pr
+# create` itself via raw Bash. That output stays empty even when Claude successfully
+# creates a real branch and PR, so every status callback and the auto_merge job (both
+# gated on that output) silently never fired. Fixed by reading the actual current
+# branch out of git right after the Claude step instead of trusting that output.
+#
 # Required repo secrets (add these yourself — never committed here):
 #   ANTHROPIC_API_KEY            — used by claude-code-action
 #   FEATURE_REQUEST_STATUS_URL   — e.g. https://harveststeps.vercel.app/api/feature-requests
@@ -34,7 +42,7 @@ jobs:
       pull-requests: write
       issues: write
     outputs:
-      branch_name: ${{ steps.claude.outputs.branch_name }}
+      branch_name: ${{ steps.branch.outputs.name }}
     steps:
       - name: Extract feature request id
         id: fr
@@ -93,19 +101,29 @@ jobs:
                 gh issue comment ${{ github.event.issue.number }} --body "<what's blocking it and what a smaller follow-up request should look like>"
               and stop without creating a branch, commit, or PR.
 
+      - name: Detect actual branch created by Claude Code
+        id: branch
+        run: |
+          CURRENT=$(git branch --show-current)
+          if [ -n "$CURRENT" ] && [ "$CURRENT" != "main" ]; then
+            echo "name=$CURRENT" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Report status - in review
-        if: steps.fr.outputs.id != '' && steps.claude.outputs.branch_name != ''
+        if: steps.fr.outputs.id != '' && steps.branch.outputs.name != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_URL=$(gh pr list --head "${{ steps.claude.outputs.branch_name }}" --json url -q '.[0].url' || echo "")
+          PR_URL=$(gh pr list --head "${{ steps.branch.outputs.name }}" --json url -q '.[0].url' || echo "")
           curl -sf -X POST "${{ secrets.FEATURE_REQUEST_STATUS_URL }}/${{ steps.fr.outputs.id }}/status" \
             -H "x-callback-secret: ${{ secrets.FEATURE_REQUEST_CALLBACK_SECRET }}" \
             -H "Content-Type: application/json" \
             -d "{\"status\":\"in_review\",\"prUrl\":\"$PR_URL\"}" || true
 
       - name: Report status - failed (no branch produced)
-        if: steps.fr.outputs.id != '' && steps.claude.outputs.branch_name == ''
+        if: steps.fr.outputs.id != '' && steps.branch.outputs.name == ''
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           CONCLUSION="${{ steps.claude.outputs.conclusion }}"
