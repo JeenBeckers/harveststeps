@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
 import { seedPersistedState } from "./seed";
-import type { FeatureRequest, FeatureRequestEvent, FeatureRequestSpec, FeatureRequestStatus, PersistedAppState } from "./types";
+import type { FeatureRequest, FeatureRequestEvent, FeatureRequestSpec, FeatureRequestStatus, PersistedAppState, UserPreferences } from "./types";
 
 export type Role = "viewer" | "editor" | "admin";
 
@@ -40,6 +40,13 @@ export async function ensureSchema(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS app_state (
       id integer PRIMARY KEY DEFAULT 1,
+      data jsonb NOT NULL,
+      updated_at timestamptz NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      user_id integer PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       data jsonb NOT NULL,
       updated_at timestamptz NOT NULL DEFAULT now()
     )
@@ -210,6 +217,27 @@ export async function saveAppState(data: PersistedAppState): Promise<void> {
     INSERT INTO app_state (id, data, updated_at)
     VALUES (1, ${JSON.stringify(data)}, now())
     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()
+  `;
+}
+
+export const DEFAULT_USER_PREFERENCES: UserPreferences = { navCollapsed: false };
+
+export async function getUserPreferences(userId: number): Promise<UserPreferences> {
+  await ensureSchema();
+  const sql = getSql();
+  const rows = await sql`SELECT data FROM user_preferences WHERE user_id = ${userId}`;
+  if (rows.length === 0) return { ...DEFAULT_USER_PREFERENCES };
+  const data = rows[0].data as Partial<UserPreferences>;
+  return { navCollapsed: Boolean(data?.navCollapsed) };
+}
+
+export async function saveUserPreferences(userId: number, prefs: UserPreferences): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+  await sql`
+    INSERT INTO user_preferences (user_id, data, updated_at)
+    VALUES (${userId}, ${JSON.stringify(prefs)}, now())
+    ON CONFLICT (user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()
   `;
 }
 

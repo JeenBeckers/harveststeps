@@ -3,23 +3,13 @@
 import Image from "next/image";
 import { useApp } from "@/lib/store";
 import { initials } from "@/lib/logic";
-import type { View } from "@/lib/types";
-
-const BASE_NAV_ITEMS: [View, string][] = [
-  ["dashboard", "Takenlijst"],
-  ["bookmarks", "Bookmarks"],
-  ["reis", "Reizen"],
-  ["beheer", "Route"],
-  ["organisatie", "Organisatie"],
-];
+import { navItemsFor } from "@/lib/nav";
 
 export function Header() {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
-  const navItems: [View, string][] = canEdit
-    ? [...BASE_NAV_ITEMS, ["verbeteringen", "Verbeteringen"], ["gebruikers", "Gebruikers"]]
-    : BASE_NAV_ITEMS;
+  const navItems = navItemsFor(canEdit);
 
   return (
     <header className="hv-header">

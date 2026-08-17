@@ -1,50 +1,18 @@
-"use client";
+import { AppProvider } from "@/lib/store";
+import { AppShell } from "@/components/AppShell";
+import { isFeatureLive } from "@/lib/flags";
 
-import { AppProvider, useApp } from "@/lib/store";
-import { Header } from "@/components/Header";
-import { HarvesterSidebar } from "@/components/HarvesterSidebar";
-import { ReisView } from "@/components/ReisView";
-import { DashboardView } from "@/components/DashboardView";
-import { BeheerView } from "@/components/BeheerView";
-import { OrganisatieView } from "@/components/OrganisatieView";
-import { BookmarksView } from "@/components/BookmarksView";
-import { UsersView } from "@/components/UsersView";
-import { FeatureRequestsView } from "@/components/FeatureRequestsView";
-import { StopModal } from "@/components/StopModal";
-import { HarvesterModal } from "@/components/HarvesterModal";
+const SIDEBAR_NAV_FLAG = "navigatiebalk-verplaatsen-naar-links-met-in-uitkla-mswxw7sx";
 
-function AppShell() {
-  const { state, me, canEdit } = useApp();
-  const view =
-    (state.view === "gebruikers" || state.view === "verbeteringen") && !canEdit ? "reis" : state.view;
+export const dynamic = "force-dynamic";
 
-  return (
-    <div className="hv-app">
-      <Header />
-      <main className="hv-main">
-        {view === "reis" && (
-          <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex" }}>
-            <HarvesterSidebar />
-            <ReisView />
-          </div>
-        )}
-        {view === "dashboard" && <DashboardView />}
-        {view === "bookmarks" && <BookmarksView />}
-        {view === "beheer" && <BeheerView />}
-        {view === "organisatie" && <OrganisatieView />}
-        {view === "gebruikers" && me && <UsersView currentUserId={me.id} />}
-        {view === "verbeteringen" && <FeatureRequestsView />}
-      </main>
-      <StopModal />
-      <HarvesterModal />
-    </div>
-  );
-}
+export default async function Home() {
+  // Fail closed: without a readable flag the app keeps the top navigation bar.
+  const sidebarNav = await isFeatureLive(SIDEBAR_NAV_FLAG).catch(() => false);
 
-export default function Home() {
   return (
     <AppProvider>
-      <AppShell />
+      <AppShell sidebarNav={sidebarNav} />
     </AppProvider>
   );
 }

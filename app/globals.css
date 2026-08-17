@@ -573,6 +573,148 @@ textarea {
   flex: none;
 }
 
+/* ---------- Side navigation (left, collapsible) ---------- */
+.hv-app--sidenav {
+  flex-direction: row;
+  /* Width of the bar itself. */
+  --hv-sidenav-panel: 236px;
+  /* Width the bar claims in the layout flow; the content shifts by exactly this much. */
+  --hv-sidenav-flow: 236px;
+}
+.hv-app--sidenav.is-collapsed {
+  --hv-sidenav-panel: 48px;
+  --hv-sidenav-flow: 48px;
+}
+.hv-app--sidenav .hv-main {
+  min-width: 0;
+}
+.hv-sidenav__spacer {
+  flex: none;
+  width: var(--hv-sidenav-flow);
+}
+.hv-sidenav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--hv-sidenav-panel);
+  background: var(--hv-green-900);
+  color: var(--hv-cream-50);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 20;
+}
+/* Skip the animation until the stored preference has been applied. */
+.hv-app--sidenav.is-ready .hv-sidenav,
+.hv-app--sidenav.is-ready .hv-sidenav__spacer {
+  transition: width 180ms ease;
+}
+.hv-sidenav__toggle {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: var(--hv-cream-300);
+  font-family: var(--hv-font-sans);
+  font-size: var(--hv-fs-eyebrow);
+  letter-spacing: var(--hv-track-eyebrow);
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 20px 20px 10px;
+  text-align: left;
+}
+.hv-sidenav__toggle:hover {
+  color: var(--hv-cream-50);
+}
+.hv-app--sidenav.is-collapsed .hv-sidenav__toggle {
+  writing-mode: vertical-rl;
+  align-self: center;
+  padding: 20px 0;
+}
+.hv-sidenav__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0 20px 20px;
+  overflow-y: auto;
+}
+.hv-app--sidenav.is-collapsed .hv-sidenav__body {
+  display: none;
+}
+.hv-sidenav__brand {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.hv-sidenav__section {
+  color: var(--hv-cream-300);
+  max-width: 100%;
+}
+.hv-sidenav__nav {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--hv-cream-100);
+  border-radius: var(--hv-r-lg);
+  padding: 6px;
+  box-shadow: var(--hv-shadow-lg);
+}
+.hv-sidenav__item {
+  width: 100%;
+  text-align: left;
+}
+.hv-sidenav__meta {
+  margin-top: auto;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 251, 245, 0.2);
+}
+.hv-sidenav__metatext {
+  color: var(--hv-cream-300);
+  font-size: 9.5px;
+}
+.hv-sidenav__user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hv-sidenav__scrim {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(9, 40, 18, 0.4);
+}
+
+/* Tablet and phone: the open bar floats over the content instead of squeezing it. */
+@media (max-width: 860px) {
+  .hv-app--sidenav {
+    --hv-sidenav-flow: 48px;
+  }
+  .hv-app--sidenav:not(.is-collapsed) {
+    --hv-sidenav-panel: min(280px, 84vw);
+  }
+  .hv-app--sidenav:not(.is-collapsed) .hv-sidenav {
+    box-shadow: var(--hv-shadow-lg);
+  }
+  .hv-app--sidenav:not(.is-collapsed) .hv-sidenav__scrim {
+    display: block;
+  }
+}
+
 /* ---------- Harvester sidebar ---------- */
 .hv-hsidebar {
   width: 252px;
