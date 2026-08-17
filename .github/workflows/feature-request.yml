@@ -54,9 +54,11 @@ jobs:
     steps:
       - name: Extract feature request id
         id: fr
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          ID=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
-          FLAG=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=flag-key: )[a-z0-9-]+' | head -1)
+          ID=$(echo "$ISSUE_BODY" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
+          FLAG=$(echo "$ISSUE_BODY" | grep -oP '(?<=flag-key: )[a-z0-9-]+' | head -1)
           echo "id=$ID" >> "$GITHUB_OUTPUT"
           echo "flag=$FLAG" >> "$GITHUB_OUTPUT"
 
@@ -158,8 +160,10 @@ jobs:
 
       - name: Extract feature request id
         id: fr
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          ID=$(echo "${{ github.event.issue.body }}" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
+          ID=$(echo "$ISSUE_BODY" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
           echo "id=$ID" >> "$GITHUB_OUTPUT"
 
       - name: Merge if the PR has no security findings, then report status
