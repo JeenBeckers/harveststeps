@@ -8,6 +8,12 @@
 # `branch_name` and `conclusion`, and PR creation must be an explicit instruction that
 # Claude Code itself executes via the `gh` CLI).
 #
+# Second bug found the same day: three real test runs all reported job success with
+# zero branches/PRs. The execution log showed `permission_denials_count: 11` — Claude
+# has file-edit/comment access by default in headless mode, but arbitrary Bash (git,
+# gh, npx) requires explicit `--allowedTools "Bash"` via claude_args, or every git/gh
+# command it tries gets silently denied while the step still reports success.
+#
 # Required repo secrets (add these yourself — never committed here):
 #   ANTHROPIC_API_KEY            — used by claude-code-action
 #   FEATURE_REQUEST_STATUS_URL   — e.g. https://harveststeps.vercel.app/api/feature-requests
@@ -57,6 +63,8 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          claude_args: |
+            --allowedTools "Bash"
           prompt: |
             Implement the feature request described in issue #${{ github.event.issue.number }}:
 
