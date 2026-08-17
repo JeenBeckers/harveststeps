@@ -8,12 +8,14 @@ const PRIMARY_NAV_ITEMS: [View, string][] = [
   BOOKMARKS_NAV_ITEM,
 ];
 
-function beheerItemsFor(canEdit: boolean): [View, string][] {
+function beheerItemsFor(canEdit: boolean, bookmarksInBeheer: boolean): [View, string][] {
   const items: [View, string][] = [
     ["beheer", "Route"],
     ["organisatie", "Organisatie"],
   ];
   if (canEdit) items.push(["verbeteringen", "Verbeteringen"], ["gebruikers", "Gebruikers"]);
+  // Bookmarks is open to every role, so unlike the editor-only items above it is never gated.
+  if (bookmarksInBeheer) items.push(BOOKMARKS_NAV_ITEM);
   return items;
 }
 
@@ -26,20 +28,31 @@ export type NavGroups = {
   trailing: [View, string][];
 };
 
+export type NavOptions = {
+  /** Render Bookmarks as a standalone item directly below the "Beheer" button. */
+  bookmarksUnderBeheer?: boolean;
+  /** Render Bookmarks as an item inside the "Beheer" group, alongside Gebruikers. */
+  bookmarksInBeheer?: boolean;
+};
+
 /**
  * Single source of truth for the navigation structure, shared by the top bar and the side bar:
  * a primary list plus a "Beheer" group for admin/management pages.
  *
- * With `bookmarksUnderBeheer` the Bookmarks item leaves the primary list and is rendered
- * underneath the "Beheer" button instead — same item, same behaviour, different position.
+ * Both bookmarks options take the item out of the primary list. `bookmarksInBeheer` makes it a
+ * regular item inside the "Beheer" group and supersedes the standalone `bookmarksUnderBeheer`
+ * placement; either way it is the same item with the same behaviour, only its position changes.
  */
-export function navGroupsFor(canEdit: boolean, bookmarksUnderBeheer = false): NavGroups {
-  const primary = bookmarksUnderBeheer
-    ? PRIMARY_NAV_ITEMS.filter(([key]) => key !== BOOKMARKS_NAV_ITEM[0])
-    : PRIMARY_NAV_ITEMS;
+export function navGroupsFor(canEdit: boolean, options: NavOptions = {}): NavGroups {
+  const bookmarksInBeheer = options.bookmarksInBeheer ?? false;
+  const bookmarksUnderBeheer = !bookmarksInBeheer && (options.bookmarksUnderBeheer ?? false);
+  const primary =
+    bookmarksInBeheer || bookmarksUnderBeheer
+      ? PRIMARY_NAV_ITEMS.filter(([key]) => key !== BOOKMARKS_NAV_ITEM[0])
+      : PRIMARY_NAV_ITEMS;
   return {
     primary,
-    beheer: { label: "Beheer", items: beheerItemsFor(canEdit) },
+    beheer: { label: "Beheer", items: beheerItemsFor(canEdit, bookmarksInBeheer) },
     trailing: bookmarksUnderBeheer ? [BOOKMARKS_NAV_ITEM] : [],
   };
 }
