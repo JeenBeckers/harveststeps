@@ -8,12 +8,20 @@ import { navGroupsFor } from "@/lib/nav";
 import type { View } from "@/lib/types";
 import type { NavPreference } from "@/lib/useNavPreference";
 
-export function SidebarNav({ nav, iconToggle }: { nav: NavPreference; iconToggle: boolean }) {
+export function SidebarNav({
+  nav,
+  iconToggle,
+  bookmarksUnderBeheer,
+}: {
+  nav: NavPreference;
+  iconToggle: boolean;
+  bookmarksUnderBeheer: boolean;
+}) {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
   const toggleLabel = nav.collapsed ? "Navigatie uitklappen" : "Navigatie inklappen";
-  const { primary, beheer } = navGroupsFor(canEdit);
+  const { primary, beheer, trailing } = navGroupsFor(canEdit, bookmarksUnderBeheer);
   const beheerActive = beheer.items.some(([key]) => key === state.view);
   const [beheerOpen, setBeheerOpen] = useState(beheerActive);
 
@@ -85,6 +93,15 @@ export function SidebarNav({ nav, iconToggle }: { nav: NavPreference; iconToggle
                 ))}
               </div>
             )}
+            {trailing.map(([key, label]) => (
+              <button
+                key={key}
+                className={`hv-btn--pill-toggle hv-sidenav__item${state.view === key ? " is-active" : ""}`}
+                onClick={() => goTo(key)}
+              >
+                {label}
+              </button>
+            ))}
           </nav>
           <div className="hv-sidenav__meta">
             <span className="hv-eyebrow hv-sidenav__metatext">{activeJourneys} actieve reizen</span>
