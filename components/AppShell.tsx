@@ -15,7 +15,7 @@ import { FeatureRequestsView } from "@/components/FeatureRequestsView";
 import { StopModal } from "@/components/StopModal";
 import { HarvesterModal } from "@/components/HarvesterModal";
 
-export function AppShell({ sidebarNav }: { sidebarNav: boolean }) {
+export function AppShell({ sidebarNav, navToggleIcon }: { sidebarNav: boolean; navToggleIcon: boolean }) {
   const { state, me, canEdit } = useApp();
   const nav = useNavPreference(sidebarNav);
   const view =
@@ -35,7 +35,7 @@ export function AppShell({ sidebarNav }: { sidebarNav: boolean }) {
     <div className={shellClass}>
       {sidebarNav ? (
         <>
-          <SidebarNav nav={nav} />
+          <SidebarNav nav={nav} iconToggle={navToggleIcon} />
           <div className="hv-sidenav__spacer" aria-hidden="true" />
         </>
       ) : (

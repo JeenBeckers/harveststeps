@@ -6,24 +6,33 @@ import { initials } from "@/lib/logic";
 import { navItemsFor } from "@/lib/nav";
 import type { NavPreference } from "@/lib/useNavPreference";
 
-export function SidebarNav({ nav }: { nav: NavPreference }) {
+export function SidebarNav({ nav, iconToggle }: { nav: NavPreference; iconToggle: boolean }) {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
   const navItems = navItemsFor(canEdit);
+  const toggleLabel = nav.collapsed ? "Navigatie uitklappen" : "Navigatie inklappen";
 
   return (
     <>
       <header className="hv-sidenav">
         <button
           type="button"
-          className="hv-sidenav__toggle"
+          className={`hv-sidenav__toggle${iconToggle ? " hv-sidenav__toggle--icon" : ""}`}
           onClick={nav.toggle}
           aria-expanded={!nav.collapsed}
           aria-controls="hv-sidenav-body"
-          title={nav.collapsed ? "Navigatie uitklappen" : "Navigatie inklappen"}
+          title={toggleLabel}
+          // The chevrons carry no meaning for a screen reader, so keep the wording as the name.
+          aria-label={iconToggle ? toggleLabel : undefined}
         >
-          {nav.collapsed ? "Uitklappen" : "Inklappen"}
+          {iconToggle
+            ? nav.collapsed
+              ? ">>"
+              : "<<"
+            : nav.collapsed
+              ? "Uitklappen"
+              : "Inklappen"}
         </button>
         <div className="hv-sidenav__body" id="hv-sidenav-body">
           <div className="hv-sidenav__brand">
