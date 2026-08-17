@@ -16,6 +16,7 @@ const VALID_STATUSES: FeatureRequestStatus[] = [
   "aangevraagd",
   "bouwen",
   "in_review",
+  "mislukt",
   "verborgen",
   "live",
   "uitgeschakeld",
@@ -46,6 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   await updateFeatureRequestStatus(featureRequestId, status as FeatureRequestStatus, {
     prUrl: typeof body?.prUrl === "string" ? body.prUrl : undefined,
     previewUrl: typeof body?.previewUrl === "string" ? body.previewUrl : undefined,
+    detail: typeof body?.detail === "string" ? body.detail : undefined,
   });
   return NextResponse.json({ ok: true });
 }

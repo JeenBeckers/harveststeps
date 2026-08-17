@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useApp } from "@/lib/store";
-import type { FeatureRequest, FeatureRequestStatus } from "@/lib/types";
+import type { FeatureRequest, FeatureRequestEvent, FeatureRequestStatus } from "@/lib/types";
 import { NewFeatureRequestModal } from "./NewFeatureRequestModal";
 
 type ApiUser = { id: number; email: string };
@@ -13,10 +13,28 @@ const STATUS_LABELS: Record<FeatureRequestStatus, string> = {
   aangevraagd: "Aangevraagd",
   bouwen: "Bouwen",
   in_review: "In review (security)",
+  mislukt: "Mislukt",
   verborgen: "Klaar (verborgen)",
   live: "Live",
   uitgeschakeld: "Uitgeschakeld",
 };
+
+const EVENT_LABELS: Record<string, string> = {
+  created: "Voorstel aangemaakt",
+  review_requested: "Review aangevraagd",
+  reviewed: "Review afgerond",
+  pushed: "Gepusht naar GitHub",
+  "status:bouwen": "Build gestart",
+  "status:in_review": "PR klaar — security review",
+  "status:mislukt": "Build mislukt",
+  "status:verborgen": "Gemerged — verborgen achter flag",
+  live: "Live gezet",
+  rolled_back: "Teruggedraaid",
+};
+
+function eventLabel(e: FeatureRequestEvent): string {
+  return EVENT_LABELS[e.event] || e.event;
+}
 
 export function FeatureRequestsView() {
   const { me, canEdit, isAdmin } = useApp();
@@ -29,6 +47,24 @@ export function FeatureRequestsView() {
   const [rollbackReasonFor, setRollbackReasonFor] = useState<number | null>(null);
   const [rollbackReason, setRollbackReason] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [eventsByRequest, setEventsByRequest] = useState<Record<number, FeatureRequestEvent[]>>({});
+  const [eventsLoading, setEventsLoading] = useState<number | null>(null);
+
+  const toggleExpand = (id: number) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    if (eventsByRequest[id]) return;
+    setEventsLoading(id);
+    fetch(`/api/feature-requests/${id}/events`)
+      .then((r) => r.json())
+      .then((data) => setEventsByRequest((prev) => ({ ...prev, [id]: Array.isArray(data.events) ? data.events : [] })))
+      .catch(() => setEventsByRequest((prev) => ({ ...prev, [id]: [] })))
+      .finally(() => setEventsLoading(null));
+  };
 
   const load = () => {
     fetch("/api/feature-requests")
@@ -38,6 +74,19 @@ export function FeatureRequestsView() {
   };
 
   useEffect(load, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      load();
+      if (expandedId !== null) {
+        fetch(`/api/feature-requests/${expandedId}/events`)
+          .then((r) => r.json())
+          .then((data) => setEventsByRequest((prev) => ({ ...prev, [expandedId]: Array.isArray(data.events) ? data.events : [] })))
+          .catch(() => {});
+      }
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [expandedId]);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -154,10 +203,18 @@ export function FeatureRequestsView() {
           )}
           {requests?.map((r) => {
             const isMyReview = me?.email.toLowerCase() === r.reviewerEmail?.toLowerCase();
+            const isExpanded = expandedId === r.id;
             return (
-              <div key={r.id} className="hv-sys-row" style={{ flexWrap: "wrap", alignItems: "flex-start" }}>
+              <div key={r.id}>
+              <div className="hv-sys-row" style={{ flexWrap: "wrap", alignItems: "flex-start" }}>
                 <span style={{ flex: 1, minWidth: "220px" }}>
-                  <span style={{ fontSize: "13.5px" }}>{r.title}</span>
+                  <button
+                    onClick={() => toggleExpand(r.id)}
+                    style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", font: "inherit", color: "inherit" }}
+                  >
+                    <span style={{ fontSize: "10px", color: "var(--hv-fg-subtle)", marginRight: "4px" }}>{isExpanded ? "▾" : "▸"}</span>
+                    <span style={{ fontSize: "13.5px" }}>{r.title}</span>
+                  </button>
                   <br />
                   <span style={{ fontSize: "10px", color: "var(--hv-fg-subtle)" }}>
                     {STATUS_LABELS[r.status]} · {r.requestedByEmail} ·{" "}
@@ -260,6 +317,56 @@ export function FeatureRequestsView() {
                     )}
                   </>
                 )}
+              </div>
+              {isExpanded && (
+                <div style={{ margin: "4px 0 12px", padding: "12px 16px", borderRadius: "8px", background: "var(--hv-cream-200)" }}>
+                  {eventsLoading === r.id && <p style={{ fontSize: "11px", color: "var(--hv-fg-muted)" }}>Laden...</p>}
+                  {eventsLoading !== r.id && (eventsByRequest[r.id]?.length ?? 0) === 0 && (
+                    <p style={{ fontSize: "11px", color: "var(--hv-fg-muted)", fontStyle: "italic" }}>Nog geen voortgang geregistreerd.</p>
+                  )}
+                  {eventsLoading !== r.id && eventsByRequest[r.id] && eventsByRequest[r.id].length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      {eventsByRequest[r.id].map((e) => {
+                        const isUrl = typeof e.detail === "string" && /^https?:\/\//.test(e.detail);
+                        const urlMatch = typeof e.detail === "string" ? e.detail.match(/https?:\/\/\S+/) : null;
+                        return (
+                          <div key={e.id} style={{ display: "flex", gap: "10px", fontSize: "11px" }}>
+                            <span style={{ color: "var(--hv-fg-subtle)", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                              {new Date(e.createdAt).toLocaleString("nl-NL")}
+                            </span>
+                            <span style={{ color: "var(--hv-fg)" }}>
+                              {eventLabel(e)}
+                              {e.detail && isUrl && (
+                                <>
+                                  {" — "}
+                                  <a href={e.detail} target="_blank" rel="noreferrer">
+                                    bekijk
+                                  </a>
+                                </>
+                              )}
+                              {e.detail && !isUrl && (
+                                <span style={{ color: "var(--hv-fg-muted)" }}>
+                                  {" — "}
+                                  {urlMatch ? (
+                                    <>
+                                      {e.detail.slice(0, urlMatch.index)}
+                                      <a href={urlMatch[0]} target="_blank" rel="noreferrer">
+                                        log
+                                      </a>
+                                    </>
+                                  ) : (
+                                    e.detail
+                                  )}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
               </div>
             );
           })}

@@ -299,7 +299,7 @@ export async function pushFeatureRequestToBuild(id: number, githubIssueUrl: stri
 export async function updateFeatureRequestStatus(
   id: number,
   status: FeatureRequestStatus,
-  patch: { prUrl?: string; previewUrl?: string } = {}
+  patch: { prUrl?: string; previewUrl?: string; detail?: string } = {}
 ): Promise<void> {
   await ensureSchema();
   const sql = getSql();
@@ -311,7 +311,8 @@ export async function updateFeatureRequestStatus(
         updated_at = now()
     WHERE id = ${id}
   `;
-  await addFeatureRequestEvent(id, `status:${status}`, "github-action", patch.prUrl || patch.previewUrl || null);
+  const detail = patch.detail || patch.prUrl || patch.previewUrl || null;
+  await addFeatureRequestEvent(id, `status:${status}`, "github-action", detail);
 }
 
 export async function toggleFeatureRequestLive(

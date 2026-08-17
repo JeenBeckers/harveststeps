@@ -155,6 +155,7 @@ export type FeatureRequestStatus =
   | "aangevraagd"
   | "bouwen"
   | "in_review"
+  | "mislukt"
   | "verborgen"
   | "live"
   | "uitgeschakeld";
