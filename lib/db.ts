@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import bcrypt from "bcryptjs";
+import { buildStops } from "./logic";
 import { seedPersistedState } from "./seed";
 import type { FeatureRequest, FeatureRequestEvent, FeatureRequestSpec, FeatureRequestStatus, PersistedAppState, UserPreferences } from "./types";
 
@@ -222,6 +223,23 @@ export async function saveAppState(data: PersistedAppState): Promise<void> {
     VALUES (1, ${JSON.stringify(data)}, now())
     ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = now()
   `;
+}
+
+/**
+ * Wipes all progress (task completion, guides, custom stops) for every active Harvester
+ * and rebuilds their journey from scratch against the current template — as if just
+ * kicked off. Harvesters themselves (and non-active ones) are left untouched.
+ */
+export async function resetActiveHarvesterJourneys(): Promise<number> {
+  const state = await getAppState();
+  let resetCount = 0;
+  const data = state.data.map((h) => {
+    if (h.status !== "active") return h;
+    resetCount++;
+    return { ...h, stops: buildStops(0, 0, h.recruiter, state.template, state.depts) };
+  });
+  await saveAppState({ ...state, data });
+  return resetCount;
 }
 
 export const DEFAULT_USER_PREFERENCES: UserPreferences = { navCollapsed: false };

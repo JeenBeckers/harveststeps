@@ -13,11 +13,38 @@ const HOOFDFASE_SIZES: { name: string; count: number }[] = [
 ];
 
 export function BeheerView() {
-  const { state, actions, canEdit } = useApp();
+  const { state, actions, canEdit, isAdmin } = useApp();
   const sysMap = new Map(state.systems.map((s) => [s.key, s]));
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [collapsedHoofdfases, setCollapsedHoofdfases] = useState<Set<string>>(new Set());
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
+
+  const resetActiveJourneys = async () => {
+    if (
+      !window.confirm(
+        "Alle actieve reizen worden leeggemaakt en opnieuw gestart op basis van deze route. Voortgang, ingevulde guides en custom haltes van actieve harvesters gaan verloren. Doorgaan?"
+      )
+    ) {
+      return;
+    }
+    setResetBusy(true);
+    setResetMessage(null);
+    try {
+      const res = await fetch("/api/admin/reset-active-journeys", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Onbekende fout");
+      setResetMessage(`${data.count} actieve ${data.count === 1 ? "reis" : "reizen"} opnieuw gestart. Pagina wordt herladen…`);
+      // The client holds its own copy of state.data and auto-saves it on any change,
+      // so reload rather than patch local state to avoid a stale save clobbering this reset.
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      setResetMessage(err instanceof Error ? err.message : "Onbekende fout");
+    } finally {
+      setResetBusy(false);
+    }
+  };
   const toggleHoofdfase = (name: string) => {
     setCollapsedHoofdfases((prev) => {
       const next = new Set(prev);
@@ -55,10 +82,22 @@ export function BeheerView() {
             </button>
           )}
         </div>
-        <p style={{ color: "var(--hv-fg-muted)", maxWidth: "560px", marginBottom: "30px" }}>
+        <p style={{ color: "var(--hv-fg-muted)", maxWidth: "560px", marginBottom: isAdmin ? "10px" : "30px" }}>
           Deze route wordt automatisch toegepast op elke nieuwe harvester. Wijzigingen gelden voor nieuwe reizen; lopende reizen
           behouden hun eigen haltes.
         </p>
+        {isAdmin && (
+          <div style={{ marginBottom: "30px" }}>
+            <button className="hv-btn hv-btn--ghost hv-btn--sm" onClick={resetActiveJourneys} disabled={resetBusy}>
+              {resetBusy ? "Bezig…" : "Reset actieve reizen naar deze route"}
+            </button>
+            {resetMessage && (
+              <p className="hv-meta" style={{ marginTop: "8px", marginBottom: 0 }}>
+                {resetMessage}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="hv-tpl-rows">
           {hoofdfaseGroups.map((group) => {
