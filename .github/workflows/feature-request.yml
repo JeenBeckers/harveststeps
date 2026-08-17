@@ -19,8 +19,16 @@
 # never use — the prompt below tells Claude to run `git checkout -b`/`push`/`gh pr
 # create` itself via raw Bash. That output stays empty even when Claude successfully
 # creates a real branch and PR, so every status callback and the auto_merge job (both
-# gated on that output) silently never fired. Fixed by reading the actual current
-# branch out of git right after the Claude step instead of trusting that output.
+# gated on that output) silently never fired.
+#
+# Fourth bug, found testing the "fix" for the third: reading `git branch --show-current`
+# in the job's own checkout right after the Claude step *also* came back empty, even
+# though the branch/PR genuinely existed on GitHub — Claude Code appears to run its Bash
+# tool against its own working copy, not the actions/checkout@v4 workspace, so local git
+# state in this job never reflects what Claude actually did. Fixed for real this time by
+# asking GitHub itself: Claude's PR body always mentions "issue #<n>", which GitHub
+# auto-registers as a "cross-referenced" timeline event on that issue — we read that
+# event instead of trusting anything about this runner's local git/working directory.
 #
 # Required repo secrets (add these yourself — never committed here):
 #   ANTHROPIC_API_KEY            — used by claude-code-action
@@ -101,22 +109,27 @@ jobs:
                 gh issue comment ${{ github.event.issue.number }} --body "<what's blocking it and what a smaller follow-up request should look like>"
               and stop without creating a branch, commit, or PR.
 
-      - name: Detect actual branch created by Claude Code
+      - name: Detect PR linked to this issue
         id: branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CURRENT=$(git branch --show-current)
-          if [ -n "$CURRENT" ] && [ "$CURRENT" != "main" ]; then
-            echo "name=$CURRENT" >> "$GITHUB_OUTPUT"
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          PR_NUMBER=$(gh api "repos/${{ github.repository }}/issues/$ISSUE_NUM/timeline" --paginate \
+            -q '[.[] | select(.event == "cross-referenced" and .source.issue.pull_request != null) | .source.issue.number] | last // ""')
+          if [ -n "$PR_NUMBER" ]; then
+            BRANCH=$(gh pr view "$PR_NUMBER" --json headRefName -q .headRefName)
+            echo "name=$BRANCH" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           else
             echo "name=" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Report status - in review
         if: steps.fr.outputs.id != '' && steps.branch.outputs.name != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_URL=$(gh pr list --head "${{ steps.branch.outputs.name }}" --json url -q '.[0].url' || echo "")
+          PR_URL="${{ github.server_url }}/${{ github.repository }}/pull/${{ steps.branch.outputs.pr_number }}"
           curl -sf -X POST "${{ secrets.FEATURE_REQUEST_STATUS_URL }}/${{ steps.fr.outputs.id }}/status" \
             -H "x-callback-secret: ${{ secrets.FEATURE_REQUEST_CALLBACK_SECRET }}" \
             -H "Content-Type: application/json" \
