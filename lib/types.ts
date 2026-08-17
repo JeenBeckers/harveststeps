@@ -129,6 +129,11 @@ export type PersistedAppState = {
   view: View;
 };
 
+/** Per-user UI preferences, stored server side so they survive a next visit. */
+export type UserPreferences = {
+  navCollapsed: boolean;
+};
+
 export type AppState = {
   view: View;
   loading: boolean;
