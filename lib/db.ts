@@ -459,6 +459,12 @@ async function addFeatureRequestEvent(
   `;
 }
 
+export async function deleteFeatureRequest(id: number): Promise<void> {
+  const sql = getSql();
+  await sql`DELETE FROM feature_request_events WHERE feature_request_id = ${id}`;
+  await sql`DELETE FROM feature_requests WHERE id = ${id}`;
+}
+
 function rowToFeatureRequest(r: Record<string, unknown>): FeatureRequest {
   return {
     id: r.id as number,

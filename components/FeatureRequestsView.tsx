@@ -154,6 +154,24 @@ export function FeatureRequestsView() {
     }
   };
 
+  const deleteRequest = async (id: number, title: string) => {
+    if (!window.confirm(`"${title}" definitief verwijderen? Dit sluit ook de gekoppelde GitHub issue en kan niet ongedaan gemaakt worden.`)) {
+      return;
+    }
+    setBusyId(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/feature-requests/${id}`, { method: "DELETE" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Kon verzoek niet verwijderen.");
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Kon verzoek niet verwijderen.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const toggleLive = async (id: number, isLive: boolean, reason?: string) => {
     setBusyId(id);
     setError("");
@@ -283,6 +301,17 @@ export function FeatureRequestsView() {
                 )}
                 {r.status === "ter_review" && !isMyReview && (
                   <span style={{ fontSize: "11px", color: "var(--hv-fg-subtle)" }}>Wacht op review van {r.reviewerEmail}</span>
+                )}
+
+                {r.status !== "verborgen" && r.status !== "live" && r.status !== "uitgeschakeld" && isAdmin && (
+                  <button
+                    className="hv-btn hv-btn--ghost hv-btn--sm"
+                    style={{ color: "var(--hv-danger)", borderColor: "var(--hv-danger)" }}
+                    disabled={busyId === r.id}
+                    onClick={() => deleteRequest(r.id, r.title)}
+                  >
+                    Verwijderen
+                  </button>
                 )}
 
                 {(r.status === "verborgen" || r.status === "live" || r.status === "uitgeschakeld") && isAdmin && (

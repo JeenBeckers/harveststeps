@@ -30,6 +30,12 @@
 # auto-registers as a "cross-referenced" timeline event on that issue — we read that
 # event instead of trusting anything about this runner's local git/working directory.
 #
+# Fifth bug, hit by a real request whose body contained a raw `<!-- flag-key: ... -->`
+# comment marker that got captured whole: both "Extract feature request id" steps spliced
+# `${{ github.event.issue.body }}` directly into a double-quoted shell string, so any
+# quote/backtick/`$` in the issue body could break or hijack the script. Fixed by passing
+# the body through `env:` (ISSUE_BODY) instead, so the shell handles it as data, not code.
+#
 # Required repo secrets (add these yourself — never committed here):
 #   ANTHROPIC_API_KEY            — used by claude-code-action
 #   FEATURE_REQUEST_STATUS_URL   — e.g. https://harveststeps.vercel.app/api/feature-requests
@@ -57,8 +63,8 @@ jobs:
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          ID=$(echo "$ISSUE_BODY" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
-          FLAG=$(echo "$ISSUE_BODY" | grep -oP '(?<=flag-key: )[a-z0-9-]+' | head -1)
+          ID=$(printf '%s' "$ISSUE_BODY" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
+          FLAG=$(printf '%s' "$ISSUE_BODY" | grep -oP '(?<=flag-key: )[a-z0-9-]+' | head -1)
           echo "id=$ID" >> "$GITHUB_OUTPUT"
           echo "flag=$FLAG" >> "$GITHUB_OUTPUT"
 
@@ -163,7 +169,7 @@ jobs:
         env:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          ID=$(echo "$ISSUE_BODY" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
+          ID=$(printf '%s' "$ISSUE_BODY" | grep -oP '(?<=feature-request-id: )\d+' | head -1)
           echo "id=$ID" >> "$GITHUB_OUTPUT"
 
       - name: Merge if the PR has no security findings, then report status
