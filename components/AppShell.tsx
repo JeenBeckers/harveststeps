@@ -20,11 +20,13 @@ export function AppShell({
   navToggleIcon,
   bookmarksUnderBeheer,
   bookmarksInBeheer,
+  harvestPlannerLabels,
 }: {
   sidebarNav: boolean;
   navToggleIcon: boolean;
   bookmarksUnderBeheer: boolean;
   bookmarksInBeheer: boolean;
+  harvestPlannerLabels: boolean;
 }) {
   const { state, me, canEdit } = useApp();
   const nav = useNavPreference(sidebarNav);
@@ -50,11 +52,12 @@ export function AppShell({
             iconToggle={navToggleIcon}
             bookmarksUnderBeheer={bookmarksUnderBeheer}
             bookmarksInBeheer={bookmarksInBeheer}
+            harvestPlannerLabels={harvestPlannerLabels}
           />
           <div className="hv-sidenav__spacer" aria-hidden="true" />
         </>
       ) : (
-        <Header />
+        <Header harvestPlannerLabels={harvestPlannerLabels} />
       )}
       <main className="hv-main">
         {view === "reis" && (

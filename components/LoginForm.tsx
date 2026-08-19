@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { sectionLabel } from "@/lib/labels";
 
-export function LoginForm() {
+export function LoginForm({ harvestPlannerLabels }: { harvestPlannerLabels: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -40,7 +41,7 @@ export function LoginForm() {
         <img src="/harvest-logo-dark.png" alt="Harvest" className="hv-login-logo" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
       </div>
       <p className="hv-eyebrow" style={{ color: "var(--hv-fg-muted)", margin: "0 0 8px" }}>
-        Talentplanner · Post-master
+        {sectionLabel(harvestPlannerLabels)}
       </p>
       <h1 style={{ fontSize: "27px", marginBottom: "22px" }}>Inloggen</h1>
 
