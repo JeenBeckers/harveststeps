@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useApp } from "@/lib/store";
 import { initials } from "@/lib/logic";
 import { navGroupsFor } from "@/lib/nav";
+import { activeCountLabel, sectionLabel } from "@/lib/labels";
 import type { View } from "@/lib/types";
 import type { NavPreference } from "@/lib/useNavPreference";
 
@@ -13,11 +14,13 @@ export function SidebarNav({
   iconToggle,
   bookmarksUnderBeheer,
   bookmarksInBeheer,
+  harvestPlannerLabels,
 }: {
   nav: NavPreference;
   iconToggle: boolean;
   bookmarksUnderBeheer: boolean;
   bookmarksInBeheer: boolean;
+  harvestPlannerLabels: boolean;
 }) {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
@@ -61,7 +64,7 @@ export function SidebarNav({
         <div className="hv-sidenav__body" id="hv-sidenav-body">
           <div className="hv-sidenav__brand">
             <Image src="/harvest-logo.png" alt="Harvest" width={132} height={28} priority style={{ height: "22px", width: "auto" }} />
-            <span className="hv-eyebrow hv-sidenav__section">Talentplanner · Post-master</span>
+            <span className="hv-eyebrow hv-sidenav__section">{sectionLabel(harvestPlannerLabels)}</span>
           </div>
           <nav className="hv-sidenav__nav">
             {primary.map(([key, label]) => (
@@ -106,7 +109,7 @@ export function SidebarNav({
             ))}
           </nav>
           <div className="hv-sidenav__meta">
-            <span className="hv-eyebrow hv-sidenav__metatext">{activeJourneys} actieve reizen</span>
+            <span className="hv-eyebrow hv-sidenav__metatext">{activeCountLabel(activeJourneys, harvestPlannerLabels)}</span>
             <div className="hv-sidenav__user">
               <div className="hv-header__avatar" title={me?.email}>
                 {me ? initials(me.email.split("@")[0].replace(/[._]/g, " ")) : ""}
