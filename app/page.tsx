@@ -7,6 +7,7 @@ const NAV_TOGGLE_ICON_FLAG = "vervang-tekstlabel-inklappen-door-icoon-linksboven
 const BOOKMARKS_UNDER_BEHEER_FLAG = "bookmarks-knop-verplaatsen-naar-onder-beheer-in-li-msx3dk54";
 const BOOKMARKS_IN_BEHEER_FLAG = "bookmarks-verplaatsen-naar-beheer-menu-msx96ba5";
 const HARVEST_PLANNER_LABELS_FLAG = "herbenoemen-ui-labels-talent-planner-harvest-plann-mt004a5f";
+const HARVESTER_EDIT_FLAG = "bewerkoptie-voor-harvester-naam-klant-startdatum-mtbaf3rj";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ export default async function Home() {
   const bookmarksInBeheer = await isFeatureLive(BOOKMARKS_IN_BEHEER_FLAG).catch(() => false);
   // Fail closed: without a readable flag the labels keep the Talentplanner wording.
   const harvestPlannerLabels = await isFeatureLive(HARVEST_PLANNER_LABELS_FLAG).catch(() => false);
+  // Fail closed: without a readable flag the harvester list stays read-only.
+  const harvesterEdit = await isFeatureLive(HARVESTER_EDIT_FLAG).catch(() => false);
 
   return (
     <AppProvider>
@@ -30,6 +33,7 @@ export default async function Home() {
         bookmarksUnderBeheer={bookmarksUnderBeheer}
         bookmarksInBeheer={bookmarksInBeheer}
         harvestPlannerLabels={harvestPlannerLabels}
+        harvesterEdit={harvesterEdit}
       />
     </AppProvider>
   );

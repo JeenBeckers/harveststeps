@@ -21,12 +21,14 @@ export function AppShell({
   bookmarksUnderBeheer,
   bookmarksInBeheer,
   harvestPlannerLabels,
+  harvesterEdit,
 }: {
   sidebarNav: boolean;
   navToggleIcon: boolean;
   bookmarksUnderBeheer: boolean;
   bookmarksInBeheer: boolean;
   harvestPlannerLabels: boolean;
+  harvesterEdit: boolean;
 }) {
   const { state, me, canEdit } = useApp();
   const nav = useNavPreference(sidebarNav);
@@ -62,7 +64,7 @@ export function AppShell({
       <main className="hv-main">
         {view === "reis" && (
           <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: "flex" }}>
-            <HarvesterSidebar />
+            <HarvesterSidebar harvesterEdit={harvesterEdit} />
             <ReisView />
           </div>
         )}

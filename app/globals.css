@@ -776,6 +776,34 @@ textarea {
 .hv-hsidebar__item.is-active {
   background: var(--hv-cream-200);
 }
+.hv-hsidebar__row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.hv-hsidebar__row .hv-hsidebar__item {
+  flex: 1;
+  min-width: 0;
+}
+.hv-hsidebar__edit {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--hv-r-sm);
+  background: transparent;
+  color: var(--hv-fg-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+.hv-hsidebar__edit:hover {
+  background: var(--hv-cream-200);
+  color: var(--hv-fg);
+}
 .hv-hsidebar__avatar {
   width: 30px;
   height: 30px;

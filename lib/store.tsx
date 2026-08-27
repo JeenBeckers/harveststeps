@@ -48,6 +48,7 @@ type Actions = {
   pickHRecruiter: (v: string) => void;
   toggleHStartNow: () => void;
   submitHModal: () => void;
+  updateHarvesterDetails: (hid: string, patch: { name: string; client: string; start: string }) => void;
   setHarvesterEmail: (hid: string, email: string) => void;
   markWelcomeEmailSent: (hid: string) => void;
   setFStatus: (v: string) => void;
@@ -560,6 +561,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  /** Edits the three fields the harvester list shows; empty values are rejected, as the form also does. */
+  const updateHarvesterDetails = useCallback((hid: string, patch: { name: string; client: string; start: string }) => {
+    if (!canEditRef.current) return;
+    const name = patch.name.trim();
+    const client = patch.client.trim();
+    const start = patch.start.trim();
+    if (!name || !client || !start) return;
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, name, client, start })) }));
+  }, []);
+
   const setHarvesterEmail = useCallback((hid: string, email: string) => {
     if (!canEditRef.current) return;
     setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, email })) }));
@@ -634,6 +645,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       pickHRecruiter,
       toggleHStartNow,
       submitHModal,
+      updateHarvesterDetails,
       setHarvesterEmail,
       markWelcomeEmailSent,
       setFStatus,
@@ -666,7 +678,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       openEditStop, openEditTemplate, closeModal, setModalName, pickModalDept, pickModalGuide,
       toggleModalSys, setModalTaskDraft, setModalPosition, addModalTask, patchModalTask, removeModalTask, submitModal,
       openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, setHEmail, pickHRecruiter,
-      toggleHStartNow, submitHModal, setHarvesterEmail, markWelcomeEmailSent, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
+      toggleHStartNow, submitHModal, updateHarvesterDetails, setHarvesterEmail, markWelcomeEmailSent, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
       setNewBookmarkName, setNewBookmarkUrl, addBookmark, removeBookmark,
       completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, importHarvesters, logout,
