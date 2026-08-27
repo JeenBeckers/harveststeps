@@ -81,6 +81,8 @@ export type Harvester = {
   status: HarvesterStatus;
   email?: string;
   apolloWelcomeSentAt?: string;
+  /** Free-text notes the ESM keeps on the harvester detail screen. */
+  notes?: string;
 };
 
 export type StopStatus = "Afgerond" | "Bezig" | "Nog te doen" | "Niet gestart";
