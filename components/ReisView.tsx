@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useApp } from "@/lib/store";
 import { currentStopOf, statusClassName, stopStatus } from "@/lib/logic";
 import { DetailPanel } from "./DetailPanel";
+import { HarvesterNotes } from "./HarvesterNotes";
 import type { Stop } from "@/lib/types";
 
 function SkeletonBlock() {
@@ -18,7 +19,8 @@ function SkeletonBlock() {
   );
 }
 
-export function ReisView() {
+/** `harvesterNotes` adds the free-text notes field for the selected harvester. */
+export function ReisView({ harvesterNotes }: { harvesterNotes: boolean }) {
   const { state, actions, canEdit, isAdmin } = useApp();
   const h = state.data.find((x) => x.id === state.hid) || state.data[0];
   const [collapsedPhases, setCollapsedPhases] = useState<Set<string>>(new Set());
@@ -223,6 +225,8 @@ export function ReisView() {
             </div>
           </div>
         )}
+
+        {harvesterNotes && !state.loading && <HarvesterNotes key={h.id} harvester={h} />}
       </div>
 
       {!state.loading && h.stops.length > 0 && active && <DetailPanel harvester={h} stop={active} />}

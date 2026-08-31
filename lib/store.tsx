@@ -50,6 +50,7 @@ type Actions = {
   submitHModal: () => void;
   updateHarvesterDetails: (hid: string, patch: { name: string; client: string; start: string }) => void;
   setHarvesterEmail: (hid: string, email: string) => void;
+  setHarvesterNotes: (hid: string, notes: string) => void;
   markWelcomeEmailSent: (hid: string) => void;
   setFStatus: (v: string) => void;
   setFOwner: (v: string) => void;
@@ -576,6 +577,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, email })) }));
   }, []);
 
+  /** Stores the free-text notes as typed; an empty value simply clears them. */
+  const setHarvesterNotes = useCallback((hid: string, notes: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, notes })) }));
+  }, []);
+
   const markWelcomeEmailSent = useCallback((hid: string) => {
     if (!canEditRef.current) return;
     setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, apolloWelcomeSentAt: new Date().toISOString() })) }));
@@ -647,6 +654,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitHModal,
       updateHarvesterDetails,
       setHarvesterEmail,
+      setHarvesterNotes,
       markWelcomeEmailSent,
       setFStatus,
       setFOwner,
@@ -678,7 +686,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       openEditStop, openEditTemplate, closeModal, setModalName, pickModalDept, pickModalGuide,
       toggleModalSys, setModalTaskDraft, setModalPosition, addModalTask, patchModalTask, removeModalTask, submitModal,
       openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, setHEmail, pickHRecruiter,
-      toggleHStartNow, submitHModal, updateHarvesterDetails, setHarvesterEmail, markWelcomeEmailSent, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
+      toggleHStartNow, submitHModal, updateHarvesterDetails, setHarvesterEmail, setHarvesterNotes, markWelcomeEmailSent, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
       setNewBookmarkName, setNewBookmarkUrl, addBookmark, removeBookmark,
       completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, importHarvesters, logout,

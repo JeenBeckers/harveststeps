@@ -8,6 +8,7 @@ const BOOKMARKS_UNDER_BEHEER_FLAG = "bookmarks-knop-verplaatsen-naar-onder-behee
 const BOOKMARKS_IN_BEHEER_FLAG = "bookmarks-verplaatsen-naar-beheer-menu-msx96ba5";
 const HARVEST_PLANNER_LABELS_FLAG = "herbenoemen-ui-labels-talent-planner-harvest-plann-mt004a5f";
 const HARVESTER_EDIT_FLAG = "bewerkoptie-voor-harvester-naam-klant-startdatum-mtbaf3rj";
+const HARVESTER_NOTES_FLAG = "notitieveld-op-harvester-detailscherm-mtbfvz5x";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export default async function Home() {
   const harvestPlannerLabels = await isFeatureLive(HARVEST_PLANNER_LABELS_FLAG).catch(() => false);
   // Fail closed: without a readable flag the harvester list stays read-only.
   const harvesterEdit = await isFeatureLive(HARVESTER_EDIT_FLAG).catch(() => false);
+  // Fail closed: without a readable flag the detail screen shows no notes field.
+  const harvesterNotes = await isFeatureLive(HARVESTER_NOTES_FLAG).catch(() => false);
 
   return (
     <AppProvider>
@@ -34,6 +37,7 @@ export default async function Home() {
         bookmarksInBeheer={bookmarksInBeheer}
         harvestPlannerLabels={harvestPlannerLabels}
         harvesterEdit={harvesterEdit}
+        harvesterNotes={harvesterNotes}
       />
     </AppProvider>
   );
