@@ -172,6 +172,24 @@ export function FeatureRequestsView() {
     }
   };
 
+  const markShipped = async (id: number) => {
+    if (!window.confirm("Markeer dit verzoek als verborgen (gemerged)? Doe dit alleen als je de PR zelf handmatig hebt gemerged op GitHub.")) {
+      return;
+    }
+    setBusyId(id);
+    setError("");
+    try {
+      const res = await fetch(`/api/feature-requests/${id}/mark-shipped`, { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "Kon niet markeren als verborgen.");
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Kon niet markeren als verborgen.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const toggleLive = async (id: number, isLive: boolean, reason?: string) => {
     setBusyId(id);
     setError("");
@@ -301,6 +319,12 @@ export function FeatureRequestsView() {
                 )}
                 {r.status === "ter_review" && !isMyReview && (
                   <span style={{ fontSize: "11px", color: "var(--hv-fg-subtle)" }}>Wacht op review van {r.reviewerEmail}</span>
+                )}
+
+                {r.prUrl && r.status !== "verborgen" && r.status !== "live" && r.status !== "uitgeschakeld" && isAdmin && (
+                  <button className="hv-btn hv-btn--ghost hv-btn--sm" disabled={busyId === r.id} onClick={() => markShipped(r.id)}>
+                    Markeer als verborgen (handmatig gemerged)
+                  </button>
                 )}
 
                 {r.status !== "verborgen" && r.status !== "live" && r.status !== "uitgeschakeld" && isAdmin && (
