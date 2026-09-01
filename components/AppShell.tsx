@@ -20,6 +20,7 @@ export function AppShell({
   navToggleIcon,
   bookmarksUnderBeheer,
   bookmarksInBeheer,
+  bookmarkSingularLabel,
   harvestPlannerLabels,
   harvesterEdit,
   harvesterNotes,
@@ -28,6 +29,7 @@ export function AppShell({
   navToggleIcon: boolean;
   bookmarksUnderBeheer: boolean;
   bookmarksInBeheer: boolean;
+  bookmarkSingularLabel: boolean;
   harvestPlannerLabels: boolean;
   harvesterEdit: boolean;
   harvesterNotes: boolean;
@@ -56,6 +58,7 @@ export function AppShell({
             iconToggle={navToggleIcon}
             bookmarksUnderBeheer={bookmarksUnderBeheer}
             bookmarksInBeheer={bookmarksInBeheer}
+            bookmarkSingularLabel={bookmarkSingularLabel}
             harvestPlannerLabels={harvestPlannerLabels}
           />
           <div className="hv-sidenav__spacer" aria-hidden="true" />
