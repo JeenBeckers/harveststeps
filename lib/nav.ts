@@ -1,21 +1,31 @@
 import type { View } from "./types";
 
-const BOOKMARKS_NAV_ITEM: [View, string] = ["bookmarks", "Bookmarks"];
+const BOOKMARKS_VIEW: View = "bookmarks";
 
-const PRIMARY_NAV_ITEMS: [View, string][] = [
-  ["dashboard", "Takenlijst"],
-  ["reis", "Harvesters"],
-  BOOKMARKS_NAV_ITEM,
-];
+function bookmarksNavItem(bookmarkSingularLabel: boolean): [View, string] {
+  return [BOOKMARKS_VIEW, bookmarkSingularLabel ? "Bookmark" : "Bookmarks"];
+}
 
-function beheerItemsFor(canEdit: boolean, bookmarksInBeheer: boolean): [View, string][] {
+function primaryNavItemsFor(bookmarksItem: [View, string]): [View, string][] {
+  return [
+    ["dashboard", "Takenlijst"],
+    ["reis", "Harvesters"],
+    bookmarksItem,
+  ];
+}
+
+function beheerItemsFor(
+  canEdit: boolean,
+  bookmarksInBeheer: boolean,
+  bookmarksItem: [View, string],
+): [View, string][] {
   const items: [View, string][] = [
     ["beheer", "Route"],
     ["organisatie", "Organisatie"],
   ];
   if (canEdit) items.push(["verbeteringen", "Verbeteringen"], ["gebruikers", "Gebruikers"]);
   // Bookmarks is open to every role, so unlike the editor-only items above it is never gated.
-  if (bookmarksInBeheer) items.push(BOOKMARKS_NAV_ITEM);
+  if (bookmarksInBeheer) items.push(bookmarksItem);
   return items;
 }
 
@@ -33,6 +43,8 @@ export type NavOptions = {
   bookmarksUnderBeheer?: boolean;
   /** Render Bookmarks as an item inside the "Beheer" group, alongside Gebruikers. */
   bookmarksInBeheer?: boolean;
+  /** Label the bookmarks item "Bookmark" (singular) instead of "Bookmarks". */
+  bookmarkSingularLabel?: boolean;
 };
 
 /**
@@ -42,18 +54,21 @@ export type NavOptions = {
  * Both bookmarks options take the item out of the primary list. `bookmarksInBeheer` makes it a
  * regular item inside the "Beheer" group and supersedes the standalone `bookmarksUnderBeheer`
  * placement; either way it is the same item with the same behaviour, only its position changes.
+ * `bookmarkSingularLabel` only rewords that item and applies wherever it sits.
  */
 export function navGroupsFor(canEdit: boolean, options: NavOptions = {}): NavGroups {
   const bookmarksInBeheer = options.bookmarksInBeheer ?? false;
   const bookmarksUnderBeheer = !bookmarksInBeheer && (options.bookmarksUnderBeheer ?? false);
+  const bookmarksItem = bookmarksNavItem(options.bookmarkSingularLabel ?? false);
+  const primaryItems = primaryNavItemsFor(bookmarksItem);
   const primary =
     bookmarksInBeheer || bookmarksUnderBeheer
-      ? PRIMARY_NAV_ITEMS.filter(([key]) => key !== BOOKMARKS_NAV_ITEM[0])
-      : PRIMARY_NAV_ITEMS;
+      ? primaryItems.filter(([key]) => key !== BOOKMARKS_VIEW)
+      : primaryItems;
   return {
     primary,
-    beheer: { label: "Beheer", items: beheerItemsFor(canEdit, bookmarksInBeheer) },
-    trailing: bookmarksUnderBeheer ? [BOOKMARKS_NAV_ITEM] : [],
+    beheer: { label: "Beheer", items: beheerItemsFor(canEdit, bookmarksInBeheer, bookmarksItem) },
+    trailing: bookmarksUnderBeheer ? [bookmarksItem] : [],
   };
 }
 
