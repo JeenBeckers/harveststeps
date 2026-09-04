@@ -69,6 +69,13 @@ export type Stop = {
 
 export type HarvesterStatus = "active" | "completed" | "aborted";
 
+export type HarvesterNote = {
+  id: string;
+  text: string;
+  createdAt: string;
+  updatedAt?: string;
+};
+
 export type Harvester = {
   id: string;
   name: string;
@@ -81,8 +88,8 @@ export type Harvester = {
   status: HarvesterStatus;
   email?: string;
   apolloWelcomeSentAt?: string;
-  /** Free-text notes the ESM keeps on the harvester detail screen. */
-  notes?: string;
+  /** Timestamped notes log the ESM keeps on the harvester detail screen. */
+  notes?: HarvesterNote[];
 };
 
 export type StopStatus = "Afgerond" | "Bezig" | "Nog te doen" | "Niet gestart";

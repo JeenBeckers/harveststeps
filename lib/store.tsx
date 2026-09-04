@@ -9,12 +9,27 @@ import type {
   CurrentUser,
   Harvester,
   HarvesterModalState,
+  HarvesterNote,
   ModalTaskDraft,
   PersistedAppState,
   StopModalState,
   View,
 } from "./types";
 import { ESM_LEAD } from "./constants";
+
+/**
+ * Older persisted state stored `notes` as a single string. Convert it to a one-entry log on
+ * load so every downstream read only ever sees the array shape; the next autosave persists the
+ * migrated shape back, so this only ever runs once per harvester.
+ */
+function normalizeHarvesterNotes(data: Harvester[]): Harvester[] {
+  return data.map((h) => {
+    const raw = h.notes as unknown;
+    if (typeof raw !== "string") return h;
+    const text = raw.trim();
+    return { ...h, notes: text ? [{ id: "note" + Date.now(), text, createdAt: new Date().toISOString() }] : [] };
+  });
+}
 
 type Actions = {
   setView: (v: View) => void;
@@ -50,7 +65,9 @@ type Actions = {
   submitHModal: () => void;
   updateHarvesterDetails: (hid: string, patch: { name: string; client: string; start: string }) => void;
   setHarvesterEmail: (hid: string, email: string) => void;
-  setHarvesterNotes: (hid: string, notes: string) => void;
+  addHarvesterNote: (hid: string, text: string) => void;
+  updateHarvesterNote: (hid: string, noteId: string, text: string) => void;
+  deleteHarvesterNote: (hid: string, noteId: string) => void;
   markWelcomeEmailSent: (hid: string) => void;
   setFStatus: (v: string) => void;
   setFOwner: (v: string) => void;
@@ -115,7 +132,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
         if (stateRes.ok) {
           const persisted: PersistedAppState = await stateRes.json();
-          setState((s) => ({ ...s, ...persisted, loading: false }));
+          setState((s) => ({ ...s, ...persisted, data: normalizeHarvesterNotes(persisted.data), loading: false }));
         } else {
           setState((s) => ({ ...s, loading: false }));
         }
@@ -577,10 +594,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, email })) }));
   }, []);
 
-  /** Stores the free-text notes as typed; an empty value simply clears them. */
-  const setHarvesterNotes = useCallback((hid: string, notes: string) => {
+  /** Appends a new timestamped entry to the harvester's notes log. */
+  const addHarvesterNote = useCallback((hid: string, text: string) => {
     if (!canEditRef.current) return;
-    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, notes })) }));
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const note: HarvesterNote = { id: "note" + Date.now(), text: trimmed, createdAt: new Date().toISOString() };
+    setState((s) => ({ ...s, data: s.data.map((x) => (x.id !== hid ? x : { ...x, notes: [...(x.notes || []), note] })) }));
+  }, []);
+
+  /** Edits an existing notes-log entry in place, stamping when it was last changed. */
+  const updateHarvesterNote = useCallback((hid: string, noteId: string, text: string) => {
+    if (!canEditRef.current) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setState((s) => ({
+      ...s,
+      data: s.data.map((x) =>
+        x.id !== hid
+          ? x
+          : {
+              ...x,
+              notes: (x.notes || []).map((n) =>
+                n.id !== noteId ? n : { ...n, text: trimmed, updatedAt: new Date().toISOString() }
+              ),
+            }
+      ),
+    }));
+  }, []);
+
+  const deleteHarvesterNote = useCallback((hid: string, noteId: string) => {
+    if (!canEditRef.current) return;
+    setState((s) => ({
+      ...s,
+      data: s.data.map((x) => (x.id !== hid ? x : { ...x, notes: (x.notes || []).filter((n) => n.id !== noteId) })),
+    }));
   }, []);
 
   const markWelcomeEmailSent = useCallback((hid: string) => {
@@ -654,7 +702,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       submitHModal,
       updateHarvesterDetails,
       setHarvesterEmail,
-      setHarvesterNotes,
+      addHarvesterNote,
+      updateHarvesterNote,
+      deleteHarvesterNote,
       markWelcomeEmailSent,
       setFStatus,
       setFOwner,
@@ -686,7 +736,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       openEditStop, openEditTemplate, closeModal, setModalName, pickModalDept, pickModalGuide,
       toggleModalSys, setModalTaskDraft, setModalPosition, addModalTask, patchModalTask, removeModalTask, submitModal,
       openAddHarvester, closeHModal, setHName, setHAge, setHRole, setHClient, setHStart, setHEmail, pickHRecruiter,
-      toggleHStartNow, submitHModal, updateHarvesterDetails, setHarvesterEmail, setHarvesterNotes, markWelcomeEmailSent, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
+      toggleHStartNow, submitHModal, updateHarvesterDetails, setHarvesterEmail, addHarvesterNote, updateHarvesterNote, deleteHarvesterNote, markWelcomeEmailSent, setFStatus, setFOwner, resetFilters, removeTemplateStop, reorderTemplate, setNewDept,
       addDept, removeDept, setDeptDraft, addDeptMember, removeDeptMember, setNewSys, addSys, removeSys,
       setNewBookmarkName, setNewBookmarkUrl, addBookmark, removeBookmark,
       completeJourney, abortJourney, reactivateJourney, deleteHarvesterPermanently, importHarvesters, logout,
