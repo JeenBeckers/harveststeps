@@ -16,6 +16,7 @@ export function SidebarNav({
   bookmarksInBeheer,
   bookmarkSingularLabel,
   harvestPlannerLabels,
+  logoutAfmeldenLabel,
 }: {
   nav: NavPreference;
   iconToggle: boolean;
@@ -23,11 +24,13 @@ export function SidebarNav({
   bookmarksInBeheer: boolean;
   bookmarkSingularLabel: boolean;
   harvestPlannerLabels: boolean;
+  logoutAfmeldenLabel: boolean;
 }) {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
   const toggleLabel = nav.collapsed ? "Navigatie uitklappen" : "Navigatie inklappen";
+  const logoutLabel = logoutAfmeldenLabel ? "Afmelden" : "Uitloggen";
   const { primary, beheer, trailing } = navGroupsFor(canEdit, {
     bookmarksUnderBeheer,
     bookmarksInBeheer,
@@ -123,7 +126,7 @@ export function SidebarNav({
               <span className="hv-role-chip">{roleLabel}</span>
             </div>
             <button className="hv-logout-btn" onClick={actions.logout}>
-              Uitloggen
+              {logoutLabel}
             </button>
           </div>
         </div>
