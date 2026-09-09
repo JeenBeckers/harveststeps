@@ -10,6 +10,7 @@ const BOOKMARK_SINGULAR_LABEL_FLAG = "label-wijzigen-in-linker-navigatiebalk-boo
 const HARVEST_PLANNER_LABELS_FLAG = "herbenoemen-ui-labels-talent-planner-harvest-plann-mt004a5f";
 const HARVESTER_EDIT_FLAG = "bewerkoptie-voor-harvester-naam-klant-startdatum-mtbaf3rj";
 const HARVESTER_NOTES_FLAG = "notitieveld-op-harvester-detailscherm-mtbfvz5x";
+const LOGOUT_AFMELDEN_LABEL_FLAG = "knoptekst-wijzigen-van-uitloggen-naar-afmelden-mtu4dyu0";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,8 @@ export default async function Home() {
   const harvesterEdit = await isFeatureLive(HARVESTER_EDIT_FLAG).catch(() => false);
   // Fail closed: without a readable flag the detail screen shows no notes field.
   const harvesterNotes = await isFeatureLive(HARVESTER_NOTES_FLAG).catch(() => false);
+  // Fail closed: without a readable flag the side bar keeps the "Uitloggen" wording.
+  const logoutAfmeldenLabel = await isFeatureLive(LOGOUT_AFMELDEN_LABEL_FLAG).catch(() => false);
 
   return (
     <AppProvider>
@@ -42,6 +45,7 @@ export default async function Home() {
         harvestPlannerLabels={harvestPlannerLabels}
         harvesterEdit={harvesterEdit}
         harvesterNotes={harvesterNotes}
+        logoutAfmeldenLabel={logoutAfmeldenLabel}
       />
     </AppProvider>
   );

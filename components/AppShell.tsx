@@ -24,6 +24,7 @@ export function AppShell({
   harvestPlannerLabels,
   harvesterEdit,
   harvesterNotes,
+  logoutAfmeldenLabel,
 }: {
   sidebarNav: boolean;
   navToggleIcon: boolean;
@@ -33,6 +34,7 @@ export function AppShell({
   harvestPlannerLabels: boolean;
   harvesterEdit: boolean;
   harvesterNotes: boolean;
+  logoutAfmeldenLabel: boolean;
 }) {
   const { state, me, canEdit } = useApp();
   const nav = useNavPreference(sidebarNav);
@@ -60,6 +62,7 @@ export function AppShell({
             bookmarksInBeheer={bookmarksInBeheer}
             bookmarkSingularLabel={bookmarkSingularLabel}
             harvestPlannerLabels={harvestPlannerLabels}
+            logoutAfmeldenLabel={logoutAfmeldenLabel}
           />
           <div className="hv-sidenav__spacer" aria-hidden="true" />
         </>
