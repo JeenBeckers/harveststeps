@@ -11,6 +11,7 @@ const HARVEST_PLANNER_LABELS_FLAG = "herbenoemen-ui-labels-talent-planner-harves
 const HARVESTER_EDIT_FLAG = "bewerkoptie-voor-harvester-naam-klant-startdatum-mtbaf3rj";
 const HARVESTER_NOTES_FLAG = "notitieveld-op-harvester-detailscherm-mtbfvz5x";
 const LOGOUT_AFMELDEN_LABEL_FLAG = "knoptekst-wijzigen-van-uitloggen-naar-afmelden-mtu4dyu0";
+const LOGOUT_HARVESTSTEPS_LABEL_FLAG = "label-afmelden-knop-wijzigen-naar-uitloggen-harves-mtyhe921";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export default async function Home() {
   const harvesterNotes = await isFeatureLive(HARVESTER_NOTES_FLAG).catch(() => false);
   // Fail closed: without a readable flag the side bar keeps the "Uitloggen" wording.
   const logoutAfmeldenLabel = await isFeatureLive(LOGOUT_AFMELDEN_LABEL_FLAG).catch(() => false);
+  // Fail closed: without a readable flag the button keeps the wording the older flag picks.
+  const logoutHarvestStepsLabel = await isFeatureLive(LOGOUT_HARVESTSTEPS_LABEL_FLAG).catch(() => false);
 
   return (
     <AppProvider>
@@ -46,6 +49,7 @@ export default async function Home() {
         harvesterEdit={harvesterEdit}
         harvesterNotes={harvesterNotes}
         logoutAfmeldenLabel={logoutAfmeldenLabel}
+        logoutHarvestStepsLabel={logoutHarvestStepsLabel}
       />
     </AppProvider>
   );
