@@ -17,6 +17,7 @@ export function SidebarNav({
   bookmarkSingularLabel,
   harvestPlannerLabels,
   logoutAfmeldenLabel,
+  logoutHarvestStepsLabel,
 }: {
   nav: NavPreference;
   iconToggle: boolean;
@@ -25,12 +26,18 @@ export function SidebarNav({
   bookmarkSingularLabel: boolean;
   harvestPlannerLabels: boolean;
   logoutAfmeldenLabel: boolean;
+  logoutHarvestStepsLabel: boolean;
 }) {
   const { state, actions, me, canEdit } = useApp();
   const activeJourneys = state.data.filter((x) => (x.status || "active") === "active" && x.stops.length).length;
   const roleLabel = me?.role === "admin" ? "Beheerder" : me?.role === "editor" ? "Bewerker" : "Bekijker";
   const toggleLabel = nav.collapsed ? "Navigatie uitklappen" : "Navigatie inklappen";
-  const logoutLabel = logoutAfmeldenLabel ? "Afmelden" : "Uitloggen";
+  // The newer flag wins: it renames whichever wording the logout button shows today.
+  const logoutLabel = logoutHarvestStepsLabel
+    ? "Uitloggen HarvestSteps"
+    : logoutAfmeldenLabel
+      ? "Afmelden"
+      : "Uitloggen";
   const { primary, beheer, trailing } = navGroupsFor(canEdit, {
     bookmarksUnderBeheer,
     bookmarksInBeheer,
